@@ -10,4 +10,5 @@ Michał Spaliński, Michał P. Heller, et al...
 [link do pracy ](https://www.researchgate.net/publication/345364690_Hydrodynamic_Attractors_in_Phase_Space)
 
 
-
+## youtube
+[link do zapytaj fizyka z helerem](https://www.youtube.com/watch?v=6R2ASA7-g-c&t=9s)
