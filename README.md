@@ -12,3 +12,17 @@ Michał Spaliński, Michał P. Heller, et al...
 
 ## youtube
 [link do zapytaj fizyka z helerem](https://www.youtube.com/watch?v=6R2ASA7-g-c&t=9s)
+
+## Źródło różnic w rozwiązaniach równania $A(w)$
+[mis_vs_brsss](notes/mis_vs_brsss.md)
+
+
+
+
+## Julia
+czego potrzeba do pracy z julia? 
+1. [Julia](https://julialang.org/downloads/)
+2. Instalowania pakietów w menadżerze pakietów julia (REPL) poprzez wpisanie `]` i potem `add` oraz nazwy pakietu.
+```bash
+add DifferentialEquations Plots LaTeXStrings
+```
