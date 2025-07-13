@@ -26,3 +26,8 @@ czego potrzeba do pracy z julia?
 ```bash
 add DifferentialEquations Plots LaTeXStrings
 ```
+3. Ważne by uruchamiać julia w terminal
+```bash 
+> julia
+> include("nazwa_pliku.jl")
+```
