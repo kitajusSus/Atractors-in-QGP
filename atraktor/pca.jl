@@ -7,21 +7,22 @@
 using Plots, Flux, MultivariateStats, Random, Statistics
 
 # Ustawienie globalnego stylu wykresów dla spójności
-theme(:wong)
+theme(:default)
 const C_eta = 1 / (4π)
 const C_tau_pi = (2 - log(2)) / (2π)
 const C_lambda_1 = 1 / (2π)
 
-
+w_true = range(0.1, 10, length=1000)
+# brsss
+A_true = 8 .* C_eta ./ w_true .+ (16 .* C_eta .* (C_tau_pi - C_lambda_1)) ./ (3 .* w_true.^2)
 # -----------------------------------------------------------------
 # KROK 1: GENERACJA DANYCH TESTOWYCH
 # -----------------------------------------------------------------
 println("Generowanie danych testowych...")
 
-function generate_data(num_points=1000, noise_level=0.15)
-    w_true = range(0.1, 10, length=1000)
-    # brsss
-    A_true = 8 .* C_eta ./ w_true .+ (16 .* C_eta .* (C_tau_pi - C_lambda_1)) ./ (3 .* w_true.^2)
+function generate_data(num_points=1000, noise_level=0.5)
+
+
 
 
     #A_true = 1.2 ./ w_true .+ 0.3 * sin.(2 .* w_true)
@@ -109,13 +110,13 @@ train_loader = Flux.DataLoader((data_normalized, data_normalized), batchsize=128
 println("Trening...")
 epochs = 100
 anim_training = @animate for i in 1:epochs
-    println("Epoka $i / $epochs")
+    #println("Epoka $i / $epochs")
     # Pętla po minibatchach danych
     for (x_batch, y_batch) in train_loader
         Flux.train!(loss, autoencoder, [(x_batch, y_batch)], opt_state)
     end
     
-    if i % 20 == 0
+    if (i % 20 == 0)
         reconstructed_norm = autoencoder(data_normalized)
         reconstructed_denorm = (reconstructed_norm .* σ) .+ μ
         
@@ -128,7 +129,7 @@ anim_training = @animate for i in 1:epochs
     end
 end
 
-gif(anim_training, "trening_autoenkodera.gif", fps=10)
+gif(anim_training, "trening_autoenkodera.gif", fps=15)
 println("Animacja treningu zapisana jako 'trening_autoenkodera.gif'.")
 
 # Finalna rekonstrukcja i błąd
@@ -154,7 +155,11 @@ scatter!(p_final, data_reconstructed_ae[1,:], data_reconstructed_ae[2,:],
     label="Autoenkoder (MSE: $(round(mse_ae, digits=4)))",
     markersize=2.5, color=:magenta
 )
+plot!(p_final, range(0.1, 10, length=1000), A_true, 
+label="A_true (bez szumu)", color=:red, linewidth=2)
+
 display(p_final)
+savefig(p_final, "wykresy_pca_ae.png")
 
 println("\n================ WNIOSKI ================")
 if mse_ae < mse_pca * 0.5
