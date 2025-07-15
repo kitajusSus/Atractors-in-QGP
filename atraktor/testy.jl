@@ -45,7 +45,7 @@ println("Rozwiązywanie zakończone.")
 # --- Tworzenie statycznego wykresu (dla wglądu i zapisu) ---
 println("Tworzenie statycznego wykresu...")
 # Ustawienie motywu i rozmiaru
-plt_static = plot(
+plt_static = plot!(
     size=(800, 600),
     theme=:solarized,
     title="Ewolucja A(w) w kierunku atraktora",
