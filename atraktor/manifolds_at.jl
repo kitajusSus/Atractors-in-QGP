@@ -28,11 +28,11 @@ end
 num_trajectories = 20000
 T0 = 1 # GeV
 
-# !!! KLUCZOWA ZMIANA: Znacznie zawężony i bardziej fizyczny zakres warunków początkowych !!!
+
 T_dot0_range = -10:0.005:10
 initial_conditions = [[T0, T_dot0] for T_dot0 in rand(T_dot0_range, num_trajectories)]
 
-# Zbieramy wszystkie punkty w jednej macierzy dla każdej "migawki" czasowej
+
 τ_snapshots = 0.5:0.5:5.0
 all_snapshots = []
 
@@ -49,7 +49,7 @@ for ic in initial_conditions
 end
 println("Dane wygenerowane. Liczba udanych trajektorii: $successful_trajectories")
 
-# !!! OBSŁUGA BŁĘDU: Sprawdzamy, czy mamy jakiekolwiek dane !!!
+# !!! OBSŁUGA BŁĘDU:
 if successful_trajectories == 0
     error("Nie udało się wygenerować żadnej stabilnej trajektorii. Spróbuj jeszcze bardziej zawęzić T_dot0_range lub zwiększyć τ0.")
 end
@@ -88,15 +88,14 @@ println("\nBudowa i trening autoenkodera...")
 
 # Definicja architektury Autoenkodera
 latent_dim = 1
-# Normalizacja danych przed podaniem do sieci neuronowej jest kluczowa!
+# Normalizacja danych przed podaniem do sieci neuronowej 
 struct Normalizer
     μ::Matrix{Float32}
     σ::Matrix{Float32}
 end
-(n::Normalizer)(x) = (x .- n.μ) ./ (n.σ .+ 1f-8) # Dodajemy epsilon, by uniknąć dzielenia przez 0
+(n::Normalizer)(x) = (x .- n.μ) ./ (n.σ .+ 1f-8) # dzielenie przez 0
 (n::Normalizer)(x, rev::Bool) = rev ? (x .* n.σ) .+ n.μ : n(x)
 
-# Użyjemy mniejszej sieci, co powinno wystarczyć i przyspieszyć trening
 encoder = Chain(Dense(2 => 8, relu), Dense(8 => latent_dim))
 decoder = Chain(Dense(latent_dim => 8, relu), Dense(8 => 2))
 

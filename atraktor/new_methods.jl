@@ -2,134 +2,122 @@
 using DifferentialEquations
 using Plots
 using LaTeXStrings
+using Colors, ColorSchemes # Dodajemy pakiety do obsługi kolorów
 
 # Ustawienie backendu dla interaktywnych wykresów 3D
-plotlyjs() 
+plotlyjs()
 
 # --- Parametry fizyczne ---
-const Cη = 1 / (4π)             # eta/s
-const Cτ = (2 - log(2)) / (2π)  # tau_pi * T
+const Cη = 1 / (4π)
+const Cτ = (2 - log(2)) / (2π)
+const ħc = 197.3 # MeV * fm
 
 # --- Równanie różniczkowe dla [A(w), T(w)] ---
-# u[1] = A(w), u[2] = T(w)
-# p to parametry (nieużywane tutaj), w to zmienna niezależna
 function attractor_system!(du, u, p, w)
-    A = u[1]
-    T = u[2]
-    
-    # 1. Równanie na A'(w)
-    # Dodajemy zabezpieczenie, aby uniknąć dzielenia przez zero, gdy A jest bliskie -12
-    denominator_A = Cτ * (1 + A/12)
-    if abs(denominator_A) < 1e-9
-        denominator_A = 1e-9 * sign(denominator_A)
-    end
+    A, T = u
+
+    denominator_A = Cτ * (1 + A / 12)
+    denominator_A = abs(denominator_A) < 1e-9 ? 1e-9 * sign(denominator_A) : denominator_A
+
     numerator_A = (3/2) * (8 * Cη / w - A) - (Cτ / (3w)) * A^2
     du[1] = numerator_A / denominator_A
 
-    # 2. Równanie na T'(w)
-    # Podobnie zabezpieczamy się przed A ≈ -12
     denominator_T = w * (A + 12)
-    if abs(denominator_T) < 1e-9
-         denominator_T = 1e-9 * sign(denominator_T)
-    end
+    denominator_T = abs(denominator_T) < 1e-9 ? 1e-9 * sign(denominator_T) : denominator_T
     du[2] = T * (A - 6) / denominator_T
 end
 
 # --- Ustawienia symulacji ---
-w₀ = 0.05
+w₀_start = 0.05
 w_final = 3.0
-wspan = (w₀, w_final)
+wspan = (w₀_start, w_final)
 
-# Warunki początkowe A₀ w w₀
-initial_A = -2.0:1.0:8.0  # Zestaw różnych A₀
-
-# Warunek początkowy T₀ w w₀ (wspólny dla wszystkich trajektorii)
-T₀ = 1.0 # Możesz go zmieniać, np. na 0.5, 2.0 etc.
+initial_A = -11.5:1.0:12.0
+T₀ = 1.0
 
 # --- Rozwiązywanie układu równań ---
 println("Rozwiązywanie układu równań dla $(length(initial_A)) warunków początkowych...")
 sols = []
 for A₀ in initial_A
-    u₀ = [A₀, T₀] # Wektor stanu początkowego
+    # Przeliczamy T₀ na odpowiednią wartość w₀
+    # Zauważ, że T₀ jest w jednostkach 1/fm, a nie MeV tutaj
+    # Jeśli chcesz zadać T₀ w MeV, musisz to uwzględnić. Załóżmy, że T₀ jest już w 1/fm.
+    w₀ = w₀_start # Startujemy wszystkie trajektorie z tego samego w
+    u₀ = [A₀, T₀ * (w₀/w₀_start)] # Skalujemy T₀, by odpowiadało w₀
+    
     prob = ODEProblem(attractor_system!, u₀, wspan)
-    sol = solve(prob, Tsit5(), abstol=1e-8, reltol=1e-8, saveat=0.01)
+    # Rodas5 jest dobrym wyborem dla problemów sztywnych (stiff)
+    sol = solve(prob, Rodas5(), abstol=1e-8, reltol=1e-8, saveat=0.01)
     push!(sols, sol)
 end
 println("Rozwiązywanie zakończone.")
 
-
 # --- Ekstrakcja danych i obliczanie τ ---
-# Przygotowujemy dane do wykresu 3D
-w_vals = sols[1].t
 trajectories_3d = []
-
 for sol in sols
-    # sol.u to wektor wektorów [[A1, T1], [A2, T2], ...]
     A_vals = [u[1] for u in sol.u]
     T_vals = [u[2] for u in sol.u]
-    
-    # Obliczamy τ(w) = w / T(w)
-    τ_vals = sol.t ./ T_vals
-    
-    # Przechowujemy trójki (w, τ, A)
+    # Teraz T jest w jednostkach 1/fm, więc nie trzeba mnożyć przez ħc
+    τ_vals = sol.t ./ T_vals 
     push!(trajectories_3d, (sol.t, τ_vals, A_vals))
 end
 
-
-# --- Tworzenie statycznego wykresu 2D (A vs w) ---
-# Używamy backendu GR do szybkiego zapisu
-plotlyjs()
-plt_2d = plot!(
+# --- Tworzenie wykresu 2D (A vs w) ---
+println("Tworzenie wykresu 2D...")
+gr() # Przełączamy na GR dla szybkiego zapisu statycznego
+plt_2d = plot(
     size=(800, 600),
     title="Ewolucja A(w) w kierunku atraktora (2D)",
     xlabel=L"w = \tau T",
     ylabel=L"A(w)",
     legend=:topright,
     ylims=(-5, 10),
-    xlims=(w₀, w_final)
+    xlims=wspan,
+    grid=true
 )
 
-# Rysowanie wszystkich trajektorii A(w)
-for sol in sols
-    plot!(plt_2d, sol, vars=(0,1), label="", color=:blue, alpha=0.6)
+# Generowanie gradientu kolorów
+gradient_kolorow = cgrad(:viridis, length(sols), categorical=true)
+
+# Rysowanie trajektorii
+for (i, sol) in enumerate(sols)
+    plot!(plt_2d, sol.t, [u[1] for u in sol.u], label="", color=gradient_kolorow[i], alpha=0.7, lw=2)
 end
 
-# Znajdujemy i wyróżniamy atraktor
-# Atraktorem jest rozwiązanie, które startuje z odpowiedniej wartości A₀
-# Możemy go przybliżyć jako rozwiązanie, które jest najniżej dla małych w
-# W tym przypadku, to często ostatnie rozwiązanie na naszej liście startującej od ujemnych A
-# Lub możemy go zdefiniować przez specjalny warunek początkowy, jeśli go znamy.
-# Tutaj, dla prostoty, wyróżnimy jedną z trajektorii jako "reprezentanta" atraktora.
-idx_attractor = 1 # Pierwsze rozwiązanie (startujące z A₀ = -2.0)
-plot!(plt_2d, sols[idx_attractor], vars=(0,1), color=:red, lw=3, label="Trajektoria atraktora")
+# Wyróżnienie trajektorii atraktora
+# Wybór środkowej trajektorii jest rozsądnym przybliżeniem
+id_attractor = findfirst(A -> A ≈ 0.0, initial_A)
+if isnothing(id_attractor)
+    id_attractor = Int(cld(length(sols), 2))
+end
+plot!(plt_2d, sols[id_attractor].t, [u[1] for u in sols[id_attractor].u], color=:red, lw=3, label="Atraktor")
 
-#display(plt_2d)
-#savefig(plt_2d, "attractor_2d_plot.png")
+display(plt_2d)
+savefig(plt_2d, "attractor_2d_plot.png")
 println("Zapisano wykres 2D do pliku attractor_2d_plot.png")
 
-
-# --- Tworzenie interaktywnego wykresu 3D (A vs w vs τ) ---
-# Wracamy do backendu plotlyjs() dla interaktywności
-plotlyjs()
-plt_3d = plot!(
+# --- Tworzenie wykresu 3D (A vs w vs τ) ---
+println("Tworzenie wykresu 3D...")
+plotlyjs() # Wracamy do interaktywnego backendu
+plt_3d = plot(
     size=(1000, 800),
     title="Ewolucja w przestrzeni fazowej (w, τ, A)",
-    xlabel=L"w = \tau T",
-    ylabel=L"\tau \text{ (czas własny)}",
-    zlabel=L"A(w) \text{ (anizotropia)}",
-    camera=(30, 30), # Ustawienie początkowe kamery (kąt, elewacja)
-    legend=false
+    xlabel="w = τT",
+    ylabel="τ (czas własny)",
+    zlabel="A(w) (anizotropia)",
+    camera=(30, 30),
+    legend=false,
+    grid=true
 )
 
-# Rysowanie trajektorii w 3D
-for traj in trajectories_3d
-    # traj to krotka (w_vals, τ_vals, A_vals)
-    plot!(plt_3d, traj[1], traj[2], traj[3], color=:blue, alpha=0.7)
+# Rysowanie wszystkich trajektorii w 3D
+for (i, traj) in enumerate(trajectories_3d)
+    plot!(plt_3d, traj[1], traj[2], traj[3], color=gradient_kolorow[i], alpha=0.8, lw=4)
 end
 
-# Wyróżnienie trajektorii atraktora w 3D
-attractor_traj_3d = trajectories_3d[idx_attractor]
-plot!(plt_3d, attractor_traj_3d[1], attractor_traj_3d[2], attractor_traj_3d[3], color=:red, lw=3)
+# Wyróżnienie atraktora
+attractor_traj_3d = trajectories_3d[id_attractor]
+plot!(plt_3d, attractor_traj_3d[1], attractor_traj_3d[2], attractor_traj_3d[3], color=:red, lw=5)
 
 display(plt_3d)
-println("Wygenerowano interaktywny wykres 3D. Możesz go obracać i przybliżać.")
+println("Wygenerowano interaktywny wykres 3D.")
