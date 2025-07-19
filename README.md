@@ -31,3 +31,17 @@ add DifferentialEquations Plots LaTeXStrings
 > julia
 > include("nazwa_pliku.jl")
 ```
+
+### Programy napisane w julia 
+Programy napisane w julia znajdują się w katalogu [atraktor](/atraktor/).
+
+[Generowanie danych](atraktor/generowanie_AiT.jl) - program generujący ewolucję $A(\tau)$ i $T(\tau)$ dla  warunków początkowych. do pliku .csv
+[Generowanie Danych logarytmicznych](atraktor/log_gen.jl) - program generujący ewolucję $A(\tau)$ i $T(\tau)$ dla  warunków początkowych. do pliku .csv w skali logarytmicznej.
+
+[Analiza wygenerowanych danych](atraktor/A_and_T_evolution.jl)
+]
+[Analiza wygenerowanych danych - punkty](atraktor/Evolution2.jl) 
+> staram się by nie trzebas było omawiać dodatkowo kodu i wszystko było jasne z komentarzy ale jak coś to zapraszam do kontaktu. 
+
+
+# Reference
