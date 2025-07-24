@@ -33,22 +33,24 @@ add DifferentialEquations Plots LaTeXStrings
 ```
 
 ### Programy napisane w julia 
-Programy napisane w julia znajdują się w katalogu [atraktor](/atraktor/).
+Programy napisane w julia znajdują się w katalogu [src](/src/).
 
-[Generowanie danych](src/data_generation/generowanie_AiT.jl) - program generujący ewolucję $A(\tau)$ i $T(\tau)$ dla  warunków początkowych. do pliku .csv
-[Generowanie Danych logarytmicznych](src/data_generation/log_gen.jl) - program generujący ewolucję $A(\tau)$ i $T(\tau)$ dla  warunków początkowych. do pliku .csv w skali logarytmicznej.
+- [Generowanie danych](src/data_generation/generowanie_AiT.jl) - program generujący ewolucję $A(\tau)$ i $T(\tau)$ dla  warunków początkowych. do pliku .csv
+- [Generowanie Danych logarytmicznych](src/data_generation/log_gen.jl) - program generujący ewolucję $A(\tau)$ i $T(\tau)$ dla  warunków początkowych. do pliku .csv w skali logarytmicznej.
 
-[Analiza wygenerowanych danych](src/A_and_T_evolution.jl)
-]
-[Analiza losowo generowanych Danych ewolucji (A,T)](src/Evolution2.jl) 
+- [Analiza wygenerowanych danych](src/A_and_T_evolution.jl)
+
+- [Analiza losowo generowanych Danych ewolucji (A,T)](src/Evolution2.jl) 
 > staram się by nie trzebas było omawiać dodatkowo kodu i wszystko było jasne z komentarzy ale jak coś to zapraszam do kontaktu. 
 `
-
+## Wygenerowane wykresy
+Wszystkie rysunki i wykresy wygenerowane przez kod bede starał się umieszczać w katalogu [images](/images/). Jeśli nie będzie tak żadnego wykresu to zalecam sprawdzenie katalogu [src](/src/) gdzie powinny być wygenerowane wykresy których jeszcze nie przeniosłem. 
 
 ## Raport 
 ### 19.07.2025
-[Evolution of A and T](src/Evolution2.jl) - program do generowania ewolucji $A(\tau)$ i $T(\tau)$ dla losowych warunków początkowych.
-![gif](images/A_T/19.07.2025.gif) - gif z ewolucji $A(\tau)$ i $T(\tau)$ dla losowych warunków początkowych.
+- [Evolution of A and T](src/Evolution2.jl) - program do generowania ewolucji $A(\tau)$ i $T(\tau)$ dla losowych warunków początkowych.
+- ![gif](images/A_T/19.07.2025.gif) 
+>gif z ewolucji $A(\tau)$ i $T(\tau)$ dla losowych warunków początkowych.
 
-> `Na tej wizualizacji widzimy nie tylko aktualny stan systemu (kolorowe punkty), ale także całą jego historię (półprzezroczyste ślady). Czerwona linia reprezentuje uniwersalny hydrodynamiczny atraktor. Proszę zwrócić uwagę, jak wszystkie indywidualne trajektorie, startujące z zupełnie różnych miejsc, nieuchronnie zakrzywiają i zbiegają się do tej jednej, czerwonej ścieżki. 
+> `Na tej wizualizacji widzidać nie tylko aktualny stan systemu (kolorowe punkty), ale także całą jego historię tzn jak zmienia się w czasie. Czerwona linia reprezentuje uniwersalny hydrodynamiczny atraktor $\ln(A_{i}/A_{mis})$. Proszę zwrócić uwagę, jak wszystkie indywidualne trajektorie, startujące z zupełnie różnych miejsc, nieuchronnie zakrzywiają i zbiegają się do tej jednej, czerwonej ścieżki. 
 # Reference
