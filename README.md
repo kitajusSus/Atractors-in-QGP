@@ -31,6 +31,31 @@ add DifferentialEquations Plots LaTeXStrings
 > julia
 > include("nazwa_pliku.jl")
 ```
+Procedura używania REPL (Read-Eval-Print Loop) w julia jest następująca:
+```bash
+include("modHydroSim.jl")
+using .modHydroSim
+
+# --- Eksperyment 1: Szybki test z domyślnymi ustawieniami ---
+# Tworzysz obiekt ustawień bez podawania argumentów - użyje domyślnych.
+settings1 = SimSettings() 
+result1 = run_simulation(PARAMS_MIS_TOY_MODEL, settings1);
+create_log_ratio_animation(result1, filename="run_default.gif")
+
+
+# --- Eksperyment 2: Dłuższa ewolucja dla modelu SYM ---
+# Tworzysz obiekt ustawień, nadpisując tylko czas końcowy.
+settings2 = SimSettings(τ_end=2.5) 
+result2 = run_simulation(PARAMS_SYM_THEORY, settings2);
+create_log_ratio_animation(result2, filename="run_sym_long.gif")
+
+
+# --- Eksperyment 3: Więcej punktów, inny zakres temperatur ---
+settings3 = SimSettings(n_points=500, T_range=(400.0, 800.0))
+result3 = run_simulation(PARAMS_SYM_THEORY, settings3);
+create_log_ratio_animation(result3, filename="run_sym_dense_hot.gif")
+
+```
 
 ### Programy napisane w julia 
 Programy napisane w julia znajdują się w katalogu [src](/src/).
@@ -38,9 +63,9 @@ Programy napisane w julia znajdują się w katalogu [src](/src/).
 - [Generowanie danych](src/data_generation/generowanie_AiT.jl) - program generujący ewolucję $A(\tau)$ i $T(\tau)$ dla  warunków początkowych. do pliku .csv
 - [Generowanie Danych logarytmicznych](src/data_generation/log_gen.jl) - program generujący ewolucję $A(\tau)$ i $T(\tau)$ dla  warunków początkowych. do pliku .csv w skali logarytmicznej.
 
-- [Analiza wygenerowanych danych](src/A_and_T_evolution.jl)
+- [Analiza wygenerowanych danych](src/trash_can/A_and_T_evolution.jl)
 
-- [Analiza losowo generowanych Danych ewolucji (A,T)](src/Evolution2.jl) 
+- [Analiza losowo generowanych Danych ewolucji (A,T)](src/trash_can/Evolution2.jl) 
 > staram się by nie trzebas było omawiać dodatkowo kodu i wszystko było jasne z komentarzy ale jak coś to zapraszam do kontaktu. 
 `
 ## Wygenerowane wykresy
@@ -48,9 +73,39 @@ Wszystkie rysunki i wykresy wygenerowane przez kod bede starał się umieszczać
 
 ## Raport 
 ### 19.07.2025
-- [Evolution of A and T](src/Evolution2.jl) - program do generowania ewolucji $A(\tau)$ i $T(\tau)$ dla losowych warunków początkowych.
+- [Evolution of A and T](src/trash_can/Evolution2.jl) - program do generowania ewolucji $A(\tau)$ i $T(\tau)$ dla losowych warunków początkowych.
 - ![gif](images/A_T/19.07.2025.gif) 
->gif z ewolucji $A(\tau)$ i $T(\tau)$ dla losowych warunków początkowych.
 
-> `Na tej wizualizacji widzidać nie tylko aktualny stan systemu (kolorowe punkty), ale także całą jego historię tzn jak zmienia się w czasie. Czerwona linia reprezentuje uniwersalny hydrodynamiczny atraktor $\ln(A_{i}/A_{mis})$. Proszę zwrócić uwagę, jak wszystkie indywidualne trajektorie, startujące z zupełnie różnych miejsc, nieuchronnie zakrzywiają i zbiegają się do tej jednej, czerwonej ścieżki. 
+### 24.07.2025
+```julia
+julia> include("modHydroSim.jl")
+Main.modHydroSim
+
+julia> using .modHydroSim
+
+julia> settings1 = SimSettings()
+SimSettings(200, 0.2, 1.2, (0.2, 1.2), (300.0, 500.0), (0.0, 4.0))
+
+julia> settings2 = SimSettings(T_range(1.0,2.0))
+ERROR: UndefVarError: `T_range` not defined in `Main`
+Suggestion: check for spelling errors or missing imports.
+Stacktrace:
+ [1] top-level scope
+   @ REPL[4]:1
+
+julia> settings2 = SimSettings(T_range=(1.0,2.0))
+SimSettings(200, 0.2, 1.2, (0.2, 1.2), (1.0, 2.0), (0.0, 4.0))
+
+julia> result_default = run_simulation(PARAMS_MIS_TOY_MODEL, settings1);
+--- Rozpoczynanie Obliczeń Numerycznych...
+--- Obliczenia Zakończone. ---
+
+julia> create_log_ratio_animation(result_default, filename= "testowy.gif")
+Generowanie animacji: testowy.gif...
+```
+Już po nauczeniu się obsługi REPL. [program modHydroSim.jl](/src/modHydroSim.jl) jest gotowy do użycia. Wystarczy go załadować i można korzystać z funkcji `run_simulation` oraz `create_log_ratio_animation` i innych.
+
+![gif_2](src/testowy_SYM.gif)
+
+
 # Reference

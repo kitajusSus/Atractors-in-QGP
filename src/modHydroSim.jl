@@ -1,4 +1,4 @@
-# Plik: HydroSim.jl
+# Plik: modHydroSim.jl
 module modHydroSim
 
 # --- Zależności ---
@@ -11,11 +11,12 @@ using LaTeXStrings
 export HydroParams, SimSettings, SimResult,
        PARAMS_SYM_THEORY, PARAMS_MIS_TOY_MODEL,
        run_simulation, 
-       create_log_ratio_animation, create_log_distance_animation
+       create_log_ratio_animation, create_log_distance_animation, animation
 
+# --- SEKCJA 1: STRUKTURY DANYCH (API) ---
 
 """
-    HydroParams
+    HydroParams(C_τπ, C_η, C_λ1)
 
 Niezmienna struktura przechowująca stałe fizyczne modelu hydrodynamiki (BRSSS).
 Jej pól nie można zmienić po utworzeniu obiektu.
@@ -26,7 +27,7 @@ struct HydroParams
     C_λ1::Float64
 end
 
-# --- Predefiniowane, niezmienne zestawy parametrów ---
+# --- Predefiniowane, niezmienne zestawy parametrów (służą jako "nazwane defaulty") ---
 "Parametry z teorii N=4 SYM (holografia/AdS-CFT), pełny model BRSSS."
 const PARAMS_SYM_THEORY = HydroParams(
     (2 - log(2)) / (2 * π),  # C_τπ
@@ -35,13 +36,14 @@ const PARAMS_SYM_THEORY = HydroParams(
 )
 
 "Parametry z pracy PRL (Heller, Spaliński et al.), model zabawkowy MIS."
-const PARAMS_TOY_MODEL = HydroParams(1.0, 0.75, 0.0)
-###############################################################
+const PARAMS_MIS_TOY_MODEL = HydroParams(1.0, 0.75, 0.0)
+
 """
-    SimSettings
+    SimSettings(; n_points=200, τ_start=0.2, ...)
 
 Niezmienna struktura przechowująca ustawienia symulacji.
-Posiada konstruktor z argumentami kluczowymi dla łatwego tworzenia.
+Posiada konstruktor z argumentami kluczowymi, co pozwala na łatwe
+nadpisywanie wartości domyślnych.
 """
 struct SimSettings
     n_points::Int
@@ -51,16 +53,19 @@ struct SimSettings
     T_range::Tuple{Float64, Float64}
     A_range::Tuple{Float64, Float64}
 end
-# Konstruktor z argumentami kluczowymi i wartościami domyślnymi
-function SimSettings( 
+
+# Zewnętrzny konstruktor z argumentami kluczowymi. To jest POPRAWNA implementacja
+# Twojej intencji "domyślnych ustawień, które można zmieniać".
+function SimSettings(; 
         n_points=200, τ_start=0.2, τ_end=1.2,
-        T_range=(300.0, 500.0), A_range=(0.0, 4.0))
-    return settings = (n_points, τ_start, τ_end, (τ_start, τ_end), T_range, A_range)
+        T_range=(300.0, 500.0), A_range=(0.0, 4.0)
+    )
+    # Wywołuje domyślny, wewnętrzny konstruktor struktury z podanymi wartościami.
+    return SimSettings(n_points, τ_start, τ_end, (τ_start, τ_end), T_range, A_range)
 end
 
-
 """
-    SimResult
+    SimResult(solutions, sol_attractor, params, settings)
 
 Struktura przechowująca kompletne wyniki symulacji wraz z metadanymi.
 """
@@ -70,6 +75,8 @@ struct SimResult
     params::HydroParams
     settings::SimSettings
 end
+
+# --- SEKCJA 2: RDZEŃ SYMULACJI I WIZUALIZACJI ---
 
 # Funkcja wewnętrzna, nieeksportowana
 function _hydro_evolution!(du, u, p::HydroParams, τ)
@@ -88,7 +95,7 @@ Uruchamia pełną symulację i zwraca jeden obiekt z wynikami.
 """
 function run_simulation(params::HydroParams, settings::SimSettings)
     println("--- Rozpoczynanie Obliczeń Numerycznych...")
-    rng = Xoshiro(5)
+    rng = Xoshiro(5) #seed 
     initial_conditions = [
         [rand(rng, settings.T_range[1]:0.1:settings.T_range[2]), rand(rng, settings.A_range[1]:0.1:settings.A_range[2])] 
         for _ in 1:settings.n_points
@@ -118,8 +125,9 @@ function create_log_ratio_animation(result::SimResult; filename="anim_log_ratio.
     println("Generowanie animacji: $(filename)...")
     
     C_η, C_τπ = result.params.C_η, result.params.C_τπ
+    settings = result.settings
 
-    anim = @animate for τ_anim in result.settings.τ_start:0.005:result.settings.τ_end
+    anim = @animate for τ_anim in settings.τ_start:0.005:settings.τ_end
         plot(
             xlabel="Temperatura T [MeV]", ylabel=L"ln(A_{num} / A_{analit})",
             title="Odległość od analitycznego atraktora w τ = $(round(τ_anim, digits=3)) fm/c",
@@ -132,40 +140,6 @@ function create_log_ratio_animation(result::SimResult; filename="anim_log_ratio.
             T_val, A_val = sol(τ_anim)
             A_attr_analit = 8*C_η / (τ_anim * T_val) + (16*C_η * C_τπ) / (3 * (τ_anim * T_val)^2)
             scatter!([T_val], [log(A_val / A_attr_analit)], 
-                      marker_z=T_val, clims=result.settings.T_range, 
-                      markerstrokewidth=0, markersize=4, label="")
-        end
-    end
-
-    gif(anim, filename, fps=fps)
-    println("Animacja zapisana: $(filename)")
-end
-"""
-    create_log_ratio_animation(solutions, sol_attractor, settings; filename="anim_log_ratio.gif", fps=15)
-
-Tworzy animację stosunku `A_num/A_analit`. Funkcja jest **szybka**,
-ponieważ operuje na gotowych danych.
-"""
-function create_log_ratio_animation(solutions, settings; filename="anim_log_ratio.gif", fps=15)
-    println("Generowanie animacji: $(filename)...")
-    
-    params = solutions[1].prob.p
-    C_η, C_τπ = params.C_η, params.C_τπ
-
-    anim = @animate for τ_anim in settings.τ_start:0.005:settings.τ_end
-        plot(
-            xlabel="Temperatura T [MeV]",
-            ylabel=L"ln(A_{num} / A_{analit})",
-            title="Odległość od analitycznego atraktora w τ = $(round(τ_anim, digits=3)) fm/c",
-            xlims=(50, 550), ylims=(-0.5, 2.0), legend=:topright,
-            grid=true, gridstyle=:dash, gridalpha=0.3
-        )
-        hline!([0], color=:magenta, linestyle=:dash, label="Atraktor Analityczny")
-        
-        for sol in solutions
-            T_val, A_val = sol(τ_anim)
-            A_attr = 8*C_η / (τ_anim * T_val) + (16*C_η * C_τπ) / (3 * (τ_anim * T_val)^2)
-            scatter!([T_val], [log(A_val / A_attr)], 
                       marker_z=T_val, clims=settings.T_range, 
                       markerstrokewidth=0, markersize=4, label="")
         end
@@ -176,15 +150,17 @@ function create_log_ratio_animation(solutions, settings; filename="anim_log_rati
 end
 
 """
-    create_log_distance_animation(solutions, sol_attractor, settings; filename="anim_log_distance.gif", fps=15)
+    create_log_distance_animation(result::SimResult; ...)
 
-Tworzy animację odległości od numerycznego atraktora. Funkcja jest **szybka**.
+Tworzy animację odległości od numerycznego atraktora.
 """
-function create_log_distance_animation(solutions, sol_attractor, settings; filename="anim_log_distance.gif", fps=15)
+function create_log_distance_animation(result::SimResult; filename="anim_log_distance.gif", fps=15)
     println("Generowanie animacji: $(filename)...")
     
+    settings = result.settings
+    
     anim = @animate for τ_anim in settings.τ_start:0.01:settings.τ_end
-        A_attr_num = sol_attractor(τ_anim)[2]
+        A_attr_num = result.sol_attractor(τ_anim)[2]
         
         plot(
             xlabel="Temperatura T [MeV]", ylabel="Odległość |A - A_attr|",
@@ -193,7 +169,7 @@ function create_log_distance_animation(solutions, sol_attractor, settings; filen
         )
         hline!([1e-4], linestyle=:dash, color=:red)
 
-        for sol in solutions
+        for sol in result.solutions
             T_val, A_val = sol(τ_anim)
             delta_A = abs(A_val - A_attr_num) + 1e-9
             scatter!([T_val], [delta_A], marker_z=sol.u[1][2], clims=settings.A_range, 
@@ -205,4 +181,35 @@ function create_log_distance_animation(solutions, sol_attractor, settings; filen
     println("Animacja zapisana: $(filename)")
 end
 
+function animation(result::SimResult; filename="anim.gif", fps=2)
+    println("Generowanie animacji: $(filename)...")
+    
+    C_η, C_τπ = result.params.C_η, result.params.C_τπ
+    settings = result.settings
+
+    anim = @animate for τ_anim in settings.τ_start:0.005:settings.τ_end
+        plot(
+            xlabel="Temperatura T [MeV]", ylabel=L"A",
+            title="basic wykres τ = $(round(τ_anim, digits=3)) ",
+            legend=:topright,
+            grid=true, gridstyle=:dash, gridalpha=0.3
+        )
+        hline!([0], color=:magenta, label="Atraktor Analityczny")
+        
+        for sol in result.solutions
+            T_val, A_val = sol(τ_anim)
+            A_attr_analit = 8*C_η / (τ_anim * T_val) + (16*C_η * C_τπ) / (3 * (τ_anim * T_val)^2)
+            scatter!([T_val], [A_val], 
+                      marker_z=T_val, clims=settings.T_range, 
+                      markerstrokewidth=0, markersize=4, label="")
+        end
+    end
+
+    gif(anim, filename, fps=fps)
+    println("Animacja zapisana: $(filename)")
 end
+
+
+
+
+end # koniec modułu modHydroSim
