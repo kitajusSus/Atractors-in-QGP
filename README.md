@@ -106,6 +106,6 @@ Generowanie animacji: testowy.gif...
 Już po nauczeniu się obsługi REPL. [program modHydroSim.jl](/src/modHydroSim.jl) jest gotowy do użycia. Wystarczy go załadować i można korzystać z funkcji `run_simulation` oraz `create_log_ratio_animation` i innych.
 
 ![gif_2](src/testowy_SYM.gif)
-
+![zdjecie](images/A_T/25.07.2025.png)
 
 # Reference
