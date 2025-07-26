@@ -1,4 +1,4 @@
-# Plik: modHydroSim.jl
+# Plik: lib.jl
 module modHydroSim
 
 # --- Zależności ---
@@ -120,8 +120,9 @@ Uruchamia pełną symulację i zwraca jeden obiekt z wynikami.
 """
 function run_simulation(params::HydroParams, settings::SimSettings)
   println("--- Rozpoczynanie Obliczeń Numerycznych...")
+  ic = initial_conditions(settings)
   solutions = ODESolution[]
-  for u0 in initial_conditions
+  for u0 in ic
     sol = evol(u0, settings.tspan, params)
     # prob = ODEProblem(_hydro_evolution!, u0, settings.tspan, params)
     # sol = solve(prob, Tsit5(), saveat=0.01)
