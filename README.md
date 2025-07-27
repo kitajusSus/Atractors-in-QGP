@@ -107,7 +107,11 @@ Już po nauczeniu się obsługi REPL. [program modHydroSim.jl](/src/modHydroSim.
 
 
 
-![gif_2](src/testowy_SYM.gif)
+- ![gif_2](src/testowy_SYM.gif)
+- ![zdjecie](images/A_T/25.07.2025.png)
+
+- ![zdjecie_2](images/A_T/27.07.2025.png)
+
 
 
 # Citation 
@@ -120,9 +124,4 @@ Już po nauczeniu się obsługi REPL. [program modHydroSim.jl](/src/modHydroSim.
   url          = {https://github.com/kitajusSus/Atractors-in-QGP},
   note         = {If you use this work, please cite it using this entry.}
 }
-=======
-![zdjecie](images/A_T/25.07.2025.png)
->>>>>>> ms
-
-```
 # Reference
