@@ -107,10 +107,10 @@ Już po nauczeniu się obsługi REPL. [program modHydroSim.jl](/src/modHydroSim.
 
 
 
-- ![gif_2](src/testowy_SYM.gif)
+**Wykresy i zdjęcie**
 - ![zdjecie](images/A_T/25.07.2025.png)
 
-- ![zdjecie_2](images/A_T/27.07.2025.png)
+- ![zdjecie_2](images/A_T/27.07.2025.gif)
 
 
 
