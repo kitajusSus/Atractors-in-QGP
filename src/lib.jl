@@ -75,7 +75,7 @@ function SimSettings(;
 end
 
 """
-    SimResult(solutions, sol_attractor, params, settings)
+    SimResult(solutions, settings)
 
 Struktura przechowująca kompletne wyniki symulacji wraz z metadanymi.
 """
@@ -87,6 +87,7 @@ end
 # --- SEKCJA 2: RDZEŃ SYMULACJI I WIZUALIZACJI ---
 
 # Funkcja wewnętrzna, nieeksportowana
+# Definiuje ewolucje w konforemnej teorii BRS3
 function ode_brs3!(du, u, p::HydroParams, τ)
   T, A = u
   C_τπ, C_η, C_λ1 = p.C_τπ, p.C_η, p.C_λ1
@@ -105,6 +106,7 @@ function initial_conditions(settings, seed=5)
     for _ in 1:settings.n_points
   ]
 end
+
 
 "Ewoluuje dany warunek początkowy"
 function evol(u0, p)
@@ -127,7 +129,7 @@ function run_simulation(settings::SimSettings)
     push!(solutions, sol)
   end
   println("--- Obliczenia Zakończone. ---")
-  return SimResult(solutions, params, settings)
+  return SimResult(solutions, settings)
 end
 
 end # koniec modułu modHydroSim

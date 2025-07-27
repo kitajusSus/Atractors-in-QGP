@@ -8,8 +8,7 @@ println("Biblioteki wczytane. Program Do robienia wykresu na bazie run_simulatio
 ustawienia = SimSettings()
 
 
-parametry = PARAMS_SYM
-wynik_symulacji = run_simulation(parametry, ustawienia)
+wynik_symulacji = run_simulation(ustawienia)
 
 
 println("Symulacja zakończona. Generowanie wykresu...")
