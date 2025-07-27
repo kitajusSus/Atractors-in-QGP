@@ -4,10 +4,11 @@ using .modHydroSim
 
 u0 = [2.4228426395939087, 5.5]
 u1 = [2.4228426395939087, 2.5]
-sett = modHydroSim.SimSettings(τ_end=1fm)
 
-sol0 = modHydroSim.evol(u0, sett.tspan, PARAMS_MIS)
-sol1 = modHydroSim.evol(u1, sett.tspan, PARAMS_MIS)
+sett = modHydroSim.SimSettings(tspan=(0.1, 1))
+
+sol0 = modHydroSim.evol(u0, sett)
+sol1 = modHydroSim.evol(u1, sett)
 
 using Plots
 

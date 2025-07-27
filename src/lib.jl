@@ -52,25 +52,26 @@ Posiada konstruktor z argumentami kluczowymi, co pozwala na łatwe
 nadpisywanie wartości domyślnych.
 """
 struct SimSettings
-  n_points::Int
-  τ_start::Float64
-  τ_end::Float64
-  tspan::Tuple{Float64,Float64}
-  T_range::Tuple{Float64,Float64}
-  A_range::Tuple{Float64,Float64}
+    ode::Function  
+    params::HydroParams
+    n_points::Int
+    tspan::Tuple{Float64,Float64}
+    T_range::Tuple{Float64,Float64}
+    A_range::Tuple{Float64,Float64}
 end
 
 # Zewnętrzny konstruktor z argumentami kluczowymi. To jest POPRAWNA implementacja
 # Twojej intencji "domyślnych ustawień, które można zmieniać".
 function SimSettings(;
-  n_points=200,
-  τ_start=0.2 * fm,
-  τ_end=12 * fm,
-  T_range=(300.0 * MeV, 500.0 * MeV),
-  A_range=(3.0, 7.0)
-)
+        ode=ode_brs3!,
+        params=PARAMS_MIS,
+        n_points=200,
+        tspan = (0.2, 10),
+        T_range=(300.0 * MeV, 500.0 * MeV),
+        A_range=(3.0, 7.0)
+    )
   # Wywołuje domyślny, wewnętrzny konstruktor struktury z podanymi wartościami.
-  return SimSettings(n_points, τ_start, τ_end, (τ_start, τ_end), T_range, A_range)
+  return SimSettings(ode, params, n_points, tspan, T_range, A_range)
 end
 
 """
@@ -80,14 +81,13 @@ Struktura przechowująca kompletne wyniki symulacji wraz z metadanymi.
 """
 struct SimResult
   solutions::Vector{ODESolution}
-  params::HydroParams
   settings::SimSettings
 end
 
 # --- SEKCJA 2: RDZEŃ SYMULACJI I WIZUALIZACJI ---
 
 # Funkcja wewnętrzna, nieeksportowana
-function _hydro_evolution!(du, u, p::HydroParams, τ)
+function ode_brs3!(du, u, p::HydroParams, τ)
   T, A = u
   C_τπ, C_η, C_λ1 = p.C_τπ, p.C_η, p.C_λ1
   du[1] = (T / τ) * (-1 / 3 + A / 18)
@@ -107,8 +107,8 @@ function initial_conditions(settings, seed=5)
 end
 
 "Ewoluuje dany warunek początkowy"
-function evol(u0, tspan, params)
-  prob = ODEProblem(_hydro_evolution!, u0, tspan, params)
+function evol(u0, p)
+  prob = ODEProblem(p.ode, u0, p.tspan, p.params)
   return solve(prob, Tsit5(), saveat=0.01)
 end
 
@@ -118,14 +118,12 @@ end
 
 Uruchamia pełną symulację i zwraca jeden obiekt z wynikami.
 """
-function run_simulation(params::HydroParams, settings::SimSettings)
+function run_simulation(settings::SimSettings)
   println("--- Rozpoczynanie Obliczeń Numerycznych...")
   ic = initial_conditions(settings)
   solutions = ODESolution[]
   for u0 in ic
-    sol = evol(u0, settings.tspan, params)
-    # prob = ODEProblem(_hydro_evolution!, u0, settings.tspan, params)
-    # sol = solve(prob, Tsit5(), saveat=0.01)
+    sol = evol(u0, settings)
     push!(solutions, sol)
   end
   println("--- Obliczenia Zakończone. ---")
