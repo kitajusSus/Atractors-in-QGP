@@ -4,13 +4,21 @@ module modHydroSim
 # --- Zależności ---
 using DifferentialEquations
 using Random
+using Distributions
+using Plots
+
 
 # --- Publiczny Interfejs Modułu ---
 export HydroParams, SimSettings, SimResult,
   PARAMS_SYM, PARAMS_MIS,
-  evol, fm, MeV, run_simulation
+  evol, fm, MeV, run_simulation, kadr
 
 # --- SEKCJA 1: STRUKTURY DANYCH (API) ---
+
+"Jednostki"
+const fm = 1.0
+const MeV = 1 / fm / 197
+
 
 """
     HydroParams(C_τπ, C_η, C_λ1)
@@ -38,10 +46,6 @@ const PARAMS_MIS = HydroParams(
   1 / (4 * π),               # C_η
   0.0                        # C_λ1
 )
-
-"Jednostki"
-const fm = 1.0
-const MeV = 1 / fm / 197
 
 
 """
@@ -99,19 +103,19 @@ end
 
 "generuje listę warunków początkowych"
 function initial_conditions(settings, seed=5)
-  rng = Xoshiro(seed) #seed
-  return [
-    [rand(rng, settings.T_range[1]:0.1:settings.T_range[2]),
-      rand(rng, settings.A_range[1]:0.1:settings.A_range[2])]
-    for _ in 1:settings.n_points
-  ]
+    rng = Xoshiro(seed)
+    Tmin, Tmax = settings.T_range
+    Amin, Amax = settings.A_range
+    Ts = rand(rng, Uniform(Tmin, Tmax),settings.n_points)
+    As = rand(rng, Uniform(Amin, Amax),settings.n_points)
+    return [[Ts[j], As[j]] for j = 1:settings.n_points] 
 end
 
 
 "Ewoluuje dany warunek początkowy"
 function evol(u0, p)
   prob = ODEProblem(p.ode, u0, p.tspan, p.params)
-  return solve(prob, Tsit5(), saveat=0.01)
+  return solve(prob, Tsit5())
 end
 
 
@@ -121,15 +125,33 @@ end
 Uruchamia pełną symulację i zwraca jeden obiekt z wynikami.
 """
 function run_simulation(settings::SimSettings)
-  println("--- Rozpoczynanie Obliczeń Numerycznych...")
+  # println("--- Rozpoczynanie Obliczeń Numerycznych...")
   ic = initial_conditions(settings)
   solutions = ODESolution[]
   for u0 in ic
     sol = evol(u0, settings)
     push!(solutions, sol)
   end
-  println("--- Obliczenia Zakończone. ---")
+  # println("--- Obliczenia Zakończone. ---")
   return SimResult(solutions, settings)
 end
+
+
+"Zwraca (T(t), A(t))"
+function TA(solutions, t)
+    Ts = [sol(t)[1] for sol in solutions]
+    As = [sol(t)[2] for sol in solutions]
+    return (Ts, As)
+end
+
+function kadr(simres, t)
+    (Ts, As) = TA(simres.solutions,t)
+    p = plot(title="Kadr w przestrzeni fazowej, t = $t",
+             xlabel="Temperatura T [MeV]",
+             ylabel="Anizotropia A")
+    plot!(p, Ts, As, seriestype=:scatter, label="")
+    display(p)
+end
+
 
 end # koniec modułu modHydroSim
