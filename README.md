@@ -74,7 +74,7 @@ Wszystkie rysunki i wykresy wygenerowane przez kod bede starał się umieszczać
 - [Evolution of A and T](src/trash_can/Evolution2.jl) - program do generowania ewolucji $A(\tau)$ i $T(\tau)$ dla losowych warunków początkowych.
 - ![gif](images/A_T/19.07.2025.gif) 
 
-[!INFO]
+[!WARNING] UWAGA
 WYZEJ ZAMIESZCZONY GIF BAZUJE NA BLEDNYCH DANYCH
 
 
