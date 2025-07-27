@@ -105,6 +105,19 @@ Generowanie animacji: testowy.gif...
 ```
 Już po nauczeniu się obsługi REPL. [program modHydroSim.jl](/src/modHydroSim.jl) jest gotowy do użycia. Wystarczy go załadować i można korzystać z funkcji `run_simulation` oraz `create_log_ratio_animation` i innych.
 
+
+# Citation 
+```tex
+@misc{bezubik2025attractors,
+  author       = {Krzysztof Bezubik and Michał Spaliński},
+  title        = {Thesis; Atractors in Physics of quark gluon plasma},
+  year         = {2025},
+  version      = {1.0.0},
+  url          = {https://github.com/kitajusSus/Atractors-in-QGP},
+  note         = {If you use this work, please cite it using this entry.}
+}
+
+```
 ![gif_2](src/testowy_SYM.gif)
 
 
