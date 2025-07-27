@@ -125,6 +125,8 @@ takich których wyniki widoczne są w [Symulacja Ewolucji A i T](images/A_T/27.0
 > include("lib.jl")
 > using .modHydroSim
 # opcjonalnie ja osobiście używam using Revise by móc modyfikować kod bez restartowania REPL
+#albo po prostu 
+> include("sne.jl")
 
 ```
 
