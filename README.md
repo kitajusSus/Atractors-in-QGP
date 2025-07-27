@@ -112,6 +112,26 @@ Już po nauczeniu się obsługi REPL. [program modHydroSim.jl](/src/modHydroSim.
 
 - ![zdjecie_2](images/A_T/27.07.2025.gif)
 
+## **[HINTON_SNE](neural_networks/sne.pdf)** Implementacja Algorytmu SNE do badania dynamiki regukcji wymiarowości
+Algorytm SNE (Stochastic Neighbor Embedding) jest używany do redukcji wymiarowości danych. W kontekście badania dynamiki redukcji wymiarowości, implementacja tego algorytmu może być przydatna do analizy danych z symulacji hydrodynamicznych m.in 
+takich których wyniki widoczne są w [Symulacja Ewolucji A i T](images/A_T/27.07.2025.gif) Gdzie dokładnie wydać jak zmienia się dynamika (tempo redukcji wymiarowości do z 2d do 1d)  w czasie.
+
+- **Kod z implementacją tego Algorytmu jest umieszczony** -> [kod_sne](src/sne.jl)
+
+*Jak używać w REPL?*
+
+```bash 
+> julia
+> ]
+> pkg > activate . # aktywacja środowiska, jeśli jest w katalogu
+> include("lib.jl")
+> using .modHydroSim
+# opcjonalnie ja osobiście używam using Revise by móc modyfikować kod bez restartowania REPL
+
+```
+
+
+
 
 
 # Citation 
