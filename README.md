@@ -135,9 +135,64 @@ takich których wyniki widoczne są w [Symulacja Ewolucji A i T](images/A_T/27.0
 # opcjonalnie ja osobiście używam using Revise by móc modyfikować kod bez restartowania REPL
 #albo po prostu 
 > include("sne.jl")
-
 ```
 
+
+## PCA 
+
+
+```bash
+julia> include("pca.jl")
+WARNING: replacing module modHydroSim.
+WARNING: using modHydroSim.MeV in module Main conflicts with an existing identifier.
+WARNING: using modHydroSim.SimSettings in module Main conflicts with an existing identifier.
+WARNING: using modHydroSim.run_simulation in module Main conflicts with an existing identifier.
+🔬 ANALIZA PCA TRAJEKTORII HYDRODYNAMIKI
+==================================================
+--- Krok 1: Generowanie danych z symulacji hydrodynamiki... ---
+--- Krok 2: Przekształcanie trajektorii w wektory wysokowymiarowe... ---
+Trajektoria 1: T0=1.429390442162698, początek wektora: [1.429390442162698, 2.232601031372945, 1.3570725751702735, 1.9708050172587508, 1.2982109634311598, 1.7673651343626369]
+Trajektoria 2: T0=2.823586055357218, początek wektora: [2.823586055357218, 7.717622248918646, 2.790290448576448, 3.2866087056181956, 2.686865038597613, 1.8492802663169772]
+Trajektoria 3: T0=2.7818286442975677, początek wektora: [2.7818286442975677, 7.811108586371958, 2.7516377327417283, 3.3413642500270155, 2.6509353798151336, 1.886260861387972]
+Przygotowanie danych zakończone. Wymiar danych wejściowych: 200 x 50
+
+=== ANALIZA WŁAŚCIWOŚCI DANYCH ===
+Liczba trajektorii: 200
+Wymiar przestrzeni: 50
+
+Temperatury początkowe:
+  Min: 1.0203622591891228
+  Max: 3.038689594841844
+  Średnia: 2.086
+  Odchylenie std: 0.555
+
+Wariancje w wymiarach:
+  Min wariancja: 0.01467
+  Max wariancja: 2.988377
+  Średnia wariancja: 0.176334
+  Całkowita wariancja: 8.817
+
+=== ANALIZA PCA ===
+Wyjaśniona wariancja przez komponenty:
+  PC1: 5.1617 (59.0%)
+  PC2: 3.5932 (41.0%)
+
+Skumulowana wyjaśniona wariancja:
+  PC1-PC1: 59.0%
+  PC1-PC2: 100.0%
+
+=== TWORZENIE WIZUALIZACJI ===
+Rozmiar Y: (200, 2)
+Typ Y: Matrix{Float64}
+Wykres zapisany jako 'pca_analysis.png'
+
+==================================================
+✅ ANALIZA ZAKOŃCZONA
+Dane wejściowe: 200 trajektorii × 50 wymiarów
+Pierwsze 2 komponenty PCA wyjaśniają 100.0% wariancji
+✅ Dobry wynik - dane mają silną strukturę głównych komponentów!
+
+```
 
 
 
@@ -152,4 +207,7 @@ takich których wyniki widoczne są w [Symulacja Ewolucji A i T](images/A_T/27.0
   url          = {https://github.com/kitajusSus/Atractors-in-QGP},
   note         = {If you use this work, please cite it using this entry.}
 }
+```
+
+
 # Reference
