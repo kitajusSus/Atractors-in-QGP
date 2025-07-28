@@ -139,7 +139,7 @@ takich których wyniki widoczne są w [Symulacja Ewolucji A i T](images/A_T/27.0
 
 
 ## PCA 
-![pca](images/pca_analisis.png)
+![pca](images/pca_analysis.png)
 
 ```bash
 julia> include("pca.jl")
