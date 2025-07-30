@@ -1,4 +1,4 @@
-using Hydro
+using HydroAttractors
 using Plots
 
 function kadr(simres, t)

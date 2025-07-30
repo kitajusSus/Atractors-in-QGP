@@ -1,14 +1,13 @@
-include("lib.jl")
-
-using .modHydroSim
+using HydroAttractors
+using Plots
 
 u0 = [2.4228426395939087, 5.5]
 u1 = [2.4228426395939087, 2.5]
 
-sett = modHydroSim.SimSettings(tspan=(0.1, 1))
+sett = SimSettings(tspan=(0.1, 1))
 
-sol0 = modHydroSim.evol(u0, sett)
-sol1 = modHydroSim.evol(u1, sett)
+sol0 = evol(u0, sett)
+sol1 = evol(u1, sett)
 
 using Plots
 

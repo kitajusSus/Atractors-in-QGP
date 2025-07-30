@@ -1,4 +1,4 @@
-module Hydro
+module HydroAttractors
 
 include("lib.jl")
 

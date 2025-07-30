@@ -2,7 +2,7 @@
 
 julia_version = "1.11.6"
 manifest_format = "2.0"
-project_hash = "272256c6af460e71d15e7c5758cd5047f9573783"
+project_hash = "7d4f826f2aa357e302cd357e4e767844e74f34b0"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "7927b9af540ee964cc5d1b73293f1eb0b761a3a1"
@@ -859,9 +859,9 @@ git-tree-sha1 = "f923f9a774fcf3f5cb761bfa43aeadd689714813"
 uuid = "2e76f6c2-a576-52d4-95c1-20adfe4de566"
 version = "8.5.1+0"
 
-[[deps.Hydro]]
+[[deps.HydroAttractors]]
 deps = ["DifferentialEquations", "Distributions", "Random"]
-path = "Hydro"
+path = "HydroAttractors"
 uuid = "55f87e66-20a9-4332-a7d6-ed495b139aba"
 version = "0.1.0"
 
