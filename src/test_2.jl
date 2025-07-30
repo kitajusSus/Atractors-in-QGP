@@ -1,5 +1,15 @@
-include("lib.jl")
-using .modHydroSim
+using Hydro
+using Plots
+
+function kadr(simres, t)
+    (Ts, As) = TA(simres.solutions,t)
+    p = plot(title="Kadr w przestrzeni fazowej, t = $t",
+             xlabel="Temperatura T [MeV]",
+             ylabel="Anizotropia A")
+    plot!(p, Ts, As, seriestype=:scatter, label="")
+    display(p)
+end
+
 
 println("Biblioteki wczytane. Program Do robienia wykresu na bazie run_simulation z lib.jl")
 
