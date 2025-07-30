@@ -12,7 +12,9 @@ using Plots
 using Statistics
 using LinearAlgebra
 
-export SimSettings, run_simulation, analyze_pca_over_time, plot_all_pca_results, plot_pca_at_time
+export SimSettings, PCAResultAtTime, full_analysis, 
+       p_pca, p_explained_variance,
+       calc_pca
 
 function pca_math(X::Matrix{Float64}, n_components::Int)
     # Pobranie wymiarów macierzy wejściowej
@@ -83,8 +85,7 @@ function pca_math(X::Matrix{Float64}, n_components::Int)
     projection_matrix = sorted_eigenvectors[:, 1:n_components] # Rozmiar (p x k)
 
     # --------------------------------------------------------------------------
-    # Krok 5: Transformacja danych do nowej przestrzeni
-    #
+    # Krok 5: Transformacja danych do nowej przestrzeni#
     # Cel: Rzutowanie oryginalnych danych na nową podprzestrzeń zdefiniowaną
     #      przez wybrane główne składowe.
     # Wzór: Nowa macierz danych Y jest obliczana jako iloczyn macierzy
@@ -104,6 +105,8 @@ function pca_math(X::Matrix{Float64}, n_components::Int)
 end
 
 
+# --- SEKCJA 2: STRUKTURY I FUNKCJE ANALIZY ---
+
 """
     PCAResultAtTime
 Struktura do przechowywania wyniku analizy PCA dla pojedynczego punktu w czasie.
@@ -114,17 +117,21 @@ struct PCAResultAtTime
     explained_variance::Vector{Float64}
 end
 
+"""
+    analyze_pca(sim_result::modHydroSim.SimResult; n_steps=50, n_components=2)
 
+Przeprowadza analizę PCA w `n_steps` punktach czasowych w całym zakresie symulacji.
 """
-    analyze_pca_over_time(sim_result::modHydroSim.SimResult, sample_times::AbstractVector; n_components=2)
-Przeprowadza analizę PCA dla każdej chwili czasu, zwracając wektor wyników.
-"""
-function analyze_pca_over_time(sim_result::modHydroSim.SimResult, sample_times::AbstractVector; n_components=2)
+function calc_pca(sim_result::modHydroSim.SimResult; n_steps=50, n_components=2)
     solutions = sim_result.solutions
+    t_start, t_end = sim_result.settings.tspan
+    sample_times = range(t_start, t_end, length=n_steps)
+    
     n_trajectories = length(solutions)
     pca_results_vector = PCAResultAtTime[]
 
     for tau in sample_times
+        # Zbieranie danych (T, A) dla wszystkich trajektorii w chwili tau
         data_at_tau = zeros(Float64, n_trajectories, 2)
         for i in 1:n_trajectories
             data_at_tau[i, :] = solutions[i](tau)
@@ -139,35 +146,47 @@ function analyze_pca_over_time(sim_result::modHydroSim.SimResult, sample_times::
 end
 
 
+# --- SEKCJA 3: WIZUALIZACJA I GŁÓWNY WORKFLOW ---
+
 """
-    plot_all_pca_results(pca_results::Vector{PCAResultAtTime}, sim_result::modHydroSim.SimResult)
-Generuje serię wykresów dla wszystkich dostępnych wyników analizy PCA.
+    p_explained_variance(pca_results::Vector{PCAResultAtTime})
+
+Tworzy wykres pokazujący, jak wariancja wyjaśniona przez PCA
+zmienia się w czasie.  wykres na bazie PRL 125
 """
-function plot_all_pca_results(pca_results::Vector{PCAResultAtTime}, sim_result::modHydroSim.SimResult)
-    initial_temps = [sol.u[1][1] for sol in sim_result.solutions]
+function p_explained_variance(pca_results::Vector{PCAResultAtTime})
+    times = [res.tau for res in pca_results]
     
-    for result in pca_results
-        total_explained_var = sum(result.explained_variance) * 100
-        
-        p = scatter(
-            result.transformed_data[:, 1], 
-            result.transformed_data[:, 2],
-            marker_z=initial_temps,
-            title="PCA dla τ = $(round(result.tau, digits=2)) (Wariancja: $(round(total_explained_var, digits=2))%)",
-            xlabel="Komponent PCA 1",
-            ylabel="Komponent PCA 2",
-            label="",
-            markersize=5,
-            alpha=0.8,
-            color=:plasma,
-            colorbar_title="  Temp. początkowa [MeV]"
-        )
-        display(p)
-    end
+    # Zakładamy 2 komponenty
+    var_pc1 = [res.explained_variance[1] for res in pca_results]
+    var_pc2 = [res.explained_variance[2] for res in pca_results]
+
+    p = plot(
+        times, 
+        [var_pc1, var_pc2],
+        title="Wariancja wyjaśniona przez komponenty PCA w czasie",
+        xlabel="Czas τ [fm/c]",
+        ylabel="Proporcja wyjaśnionej wariancji",
+        label=["Komponent 1" "Komponent 2"],
+        legend=:right,
+        linewidth=2,
+        xticks=[0.2,0.27,0.4,0.61],
+    )
+    
+    hline!(p, [1.0], linestyle=:dash, color=:black, label="100%", alpha=0.5)
+    
+    return p
 end
 
-function plot_pca_at_time(pca_results::Vector{PCAResultAtTime}, sim_result::modHydroSim.SimResult, target_tau::Float64)
-    idx = findfirst(res -> res.tau ≈ target_tau, pca_results)
+
+"""
+    p_pca(pca_results::Vector{PCAResultAtTime}, sim_result::modHydroSim.SimResult, target_tau::Float64)
+
+Wyszukuje i wyświetla wykres PCA dla konkretnej chwili czasu `target_tau`.
+"""
+function p_pca(pca_results::Vector{PCAResultAtTime}, sim_result::modHydroSim.SimResult, target_tau::Float64)
+    # Znajdź najbliższy dostępny czas w wynikach
+    idx = findmin(res -> abs(res.tau - target_tau), pca_results)[2]
     
     if isnothing(idx)
         available_times = [round(r.tau, digits=3) for r in pca_results]
@@ -186,31 +205,45 @@ function plot_pca_at_time(pca_results::Vector{PCAResultAtTime}, sim_result::modH
         xlabel="Komponent PCA 1",
         ylabel="Komponent PCA 2",
         label="",
+        xlims=(-1.5, 1.5),
+        ylims=(-0.55, 0.51),
         markersize=5,
         alpha=0.8,
         color=:plasma,
         colorbar_title="  Temp. początkowa [MeV]"
     )
     display(p)
+    return p
 end
 
-end # --- koniec modułu PCAWorkflow ---
+"""
+    full_analysis(; settings=SimSettings(), n_pca_steps=50)
+
+Uruchamia cały workflow: symulację, analizę PCA, wyświetla kluczowe wyniki
+i zwraca artefakty do dalszej analizy.
+"""
+function full_analysis(; settings=SimSettings(), n_pca_steps=50)
+    println("--- Krok 1: Uruchamianie symulacji hydro... ---")
+    sim_result = modHydroSim.run_simulation(settings)
+    println("Symulacja zakończona. Liczba trajektorii: $(length(sim_result.solutions)).")
+    
+    println("\n--- Krok 2: Przeprowadzanie analizy PCA w czasie... ---")
+    pca_results = calc_pca(sim_result, n_steps=n_pca_steps)
+    println("Analiza PCA zakończona dla $n_pca_steps punktów w czasie.")
+    
+    println("\n--- Krok 3: Generowanie wykresu wyjaśnionej wariancji... ---")
+    variance_plot = p_explained_variance(pca_results)
+    display(variance_plot)
+    
+    
+    println("Wykres dla koncowej wariancji wyjaśnionej przez PCA gotowy.")
+    p_pca(pca_results, sim_result, 0.4)
+
+    final_var_pc1 = pca_results[end].explained_variance[1] * 100
+    println("\nAnaliza zakończona. Wariancja wyjaśniona przez PC1 na końcu ewolucji: $(round(final_var_pc1, digits=2))%")
+    
+    return sim_result, pca_results
+end
 
 
-#    julia> include("pca.jl")
-#
-
-#    julia> using .PCAWorkflow
-#
-
-#    julia> settings = SimSettings(n_points=300, tspan=(0.2, 1.2))
-#    julia> sim_data = run_simulation(settings)
-#
-
-#    julia> czasy_wykres = [0.2, 0.6, 1.0]
-#    julia> wyniki_analizy = analyze_pca_over_time(sim_data, czasy_wykres)
-
-#    julia> plot_pca_at_time(wyniki_analizy, sim_data, 0.6)
-
-#    julia> plot_all_pca_results(wyniki_analizy, sim_data)
-# --------------------------------------------------------------------------
+end # koniec modułu PCAWorkfloexport SimSettings, run_simulation, analyzePCA, p_allPCA, p_PCAex, pca_mathw
