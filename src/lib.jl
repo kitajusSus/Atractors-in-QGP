@@ -68,7 +68,7 @@ end
 # Twojej intencji "domyślnych ustawień, które można zmieniać".
 function SimSettings(;
         ode=ode_brs3!,
-        params=PARAMS_MIS,
+        params=PARAMS_SYM,
         n_points=200,
         tspan = (0.2, 10),
         T_range=(300.0 * MeV, 500.0 * MeV),

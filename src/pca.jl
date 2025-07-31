@@ -154,13 +154,15 @@ end
 Tworzy wykres pokazujący, jak wariancja wyjaśniona przez PCA
 zmienia się w czasie.  wykres na bazie PRL 125
 """
-function p_explained_variance(pca_results::Vector{PCAResultAtTime})
+function p_explained_variance(settings::modHydroSim.SimSettings)
+    wyniki_symulacji = modHydroSim.run_simulation(settings)
+    pca_results = calc_pca(wyniki_symulacji, n_steps=50)
     times = [res.tau for res in pca_results]
     
     # Zakładamy 2 komponenty
     var_pc1 = [res.explained_variance[1] for res in pca_results]
     var_pc2 = [res.explained_variance[2] for res in pca_results]
-
+    println("Wykres dla SimSettings: $(settings)")
     p = plot(
         times, 
         [var_pc1, var_pc2],
