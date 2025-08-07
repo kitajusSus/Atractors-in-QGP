@@ -124,4 +124,7 @@ Już po nauczeniu się obsługi REPL. [program modHydroSim.jl](/src/modHydroSim.
   url          = {https://github.com/kitajusSus/Atractors-in-QGP},
   note         = {If you use this work, please cite it using this entry.}
 }
+```
+
+
 # Reference
