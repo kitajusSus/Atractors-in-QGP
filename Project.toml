@@ -56,8 +56,8 @@ TimerOutputs = "a759f4b9-e2f1-59dc-863e-4aeb61b1ea8f"
 VimBindings = "51b3953f-5e5d-4a6b-bd62-c64b6fa1518a"
 
 [compat]
+DifferentialEquations = "7.17.0"
 JuliaFormatter = "2.3.0"
-KrylovKit = "0.10.2"
 Latexify = "0.16.10"
 LinearAlgebra = "1.12.0"
 Polynomials = "4.1.1"
