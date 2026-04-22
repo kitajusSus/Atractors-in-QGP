@@ -10,9 +10,9 @@ using Random
 function swissroll_dane(N)
 
     rnd = Xoshiro(5)
-    τ = 1.5π .+ 3π .* rand(Xoshiro(5), Float32, N)
-    h = 21f0 .* rand(Xoshiro(5), Float32, N)
-    r = τ .+ (0.2f0 .* randn(Xoshiro(5), Float32, N))
+    τ = 1.5π .+ 3π .* rand(rnd, Float64, N)
+    h = 21f0 .* rand(rnd, Float64, N)
+    r = τ .+ (0.2f0 .* randn(rnd, Float64, N))
     X = [r .* cos.(τ) h r .* sin.(τ)]'
     return X, τ
 end
