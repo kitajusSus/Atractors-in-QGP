@@ -3,6 +3,8 @@ using GLMakie
 include("../ncbj_lle.jl")
 include("swissroll.jl")
 using Printf
+include("2d_example_data.jl")
+
 
 """
     _cumvar_dim(λ, prog) -> Int
@@ -60,18 +62,18 @@ Wypisuje wynik w terminalu.
 Zwraca: (Ks, dims, stabilny)
 """
 function ex_k_stability(;
-    funkcja_danych = swissroll_dane(),
+    data,
     K_range           = 3:25,
-    😽 :: Float64 = 0.01,
+    prog :: Float64 = 0.01,
     min_stabilne :: Int  = 3,
 )
-    X, labels = funkcja_danych
+    X = data
     N = size(X, 2)
     Ks   = collect(K_range)
     dims = Vector{Int}(undef, length(Ks))
 
     println("\nSymulacja stabilności wymiaru względem K")
-    println("N=$N  próg=$(round(😽 *100,digits=2))%  K=$(first(Ks))..$(last(Ks))")
+    println("N=$N  próg=$(round(prog *100,digits=2))%  K=$(first(Ks))..$(last(Ks))")
     println(repeat("─", 42))
     @printf("%-6s | %-10s\n", "K", "d (cumvar)")
     println(repeat("─", 42))
@@ -80,7 +82,7 @@ function ex_k_stability(;
         W  = ncbj4_lle_basic(X, K)
         M  = (I - W)' * (I - W)
         F  = eigen(Symmetric(M))
-        d  = _cumvar_dim(F.values, 😽)
+        d  = _cumvar_dim(F.values, prog)
         dims[idx] = d
         @printf("%-6d | %-10d\n", K, d)
     end
@@ -97,7 +99,7 @@ function ex_k_stability(;
     # ── wykres ────────────────────────────────────────────────────────────────
     fig = Figure(size=(800, 480))
     ax  = Axis(fig[1, 1],
-        title    = "Stabilność estymowanego wymiaru d względem K  (N=$N, próg=$(round(😽*100,digits=1))%)",
+        title    = "Stabilność estymowanego wymiaru d względem K  (N=$N, próg=$(round(prog*100,digits=1))%)",
         xlabel   = "Liczba sąsiadów K",
         ylabel   = "Estymowany wymiar d",
         xticks   = Ks,
@@ -130,4 +132,6 @@ function ex_k_stability(;
     return Ks, dims, stabilny
 end
 
-ex_k_stability(funkcja_danych=swissroll_dane(1500), K_range=3:25, 😽=0.01, min_stabilne=2)
+
+dane, _ =hiperbola_dane(N= 2000)
+ex_k_stability(dane, K_range=3:25, 😽=0.01, min_stabilne=2)
