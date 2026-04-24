@@ -3,7 +3,7 @@ using LinearAlgebra
 using DelimitedFiles
 include("../../examples/ncbj_lle.jl") 
 
-function compare_eigenvalues(; K=12, indeksy=1:10)
+function compare_eigen_jlmatlab(; K=12, indeksy=1:10)
     X_matlab = readdlm(joinpath(@__DIR__, "X_matlab.csv"))
     E_matlab = vec(readdlm(joinpath(@__DIR__, "E_matlab.csv")))
     

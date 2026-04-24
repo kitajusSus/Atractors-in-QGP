@@ -53,7 +53,8 @@ function porownaj_zbiory(; N=2000, K=12, indeksy=1:6)
         idx = indeksy[indeksy .<= limit]
         
         wartosci = F.values[idx]
-        znormalizowane = wartosci ./ wartosci[2]
+        znormalizowane = wartosci
+        znormalizowane[2:end] = wartosci[2:end] ./ wartosci[2]
         
         println(nazwa)
         println("----------")
@@ -65,4 +66,4 @@ function porownaj_zbiory(; N=2000, K=12, indeksy=1:6)
     end
 end
 
-porownaj_zbiory(N=2000, K=12, indeksy=1:6)
+# porownaj_zbiory(N=2000, K=12, indeksy=1:6)

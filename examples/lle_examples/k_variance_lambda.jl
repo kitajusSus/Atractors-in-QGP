@@ -16,8 +16,8 @@ function lambda_analiza(; X, K=12, indeksy=1:10)
     idx = indeksy[indeksy .<= limit]
     
     val_j = F.values[idx]
-    val_2 = max(val_j[2], 1e-14)
-    norm_j = val_j ./ val_2
+    norm_j = val_j
+    norm_j[2:end] = val_j[2:end] ./ val_j[2]
     
     # println("\nAnaliza widma dla K = $K")
     # @printf("%-8s | %-18s | %-18s\n", "Indeks", "Wartość surowa", "Wartość znormalizowana")

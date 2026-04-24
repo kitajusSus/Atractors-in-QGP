@@ -15,11 +15,12 @@ makedocs(
         "Examples of usage" => "examples.md",
         "Tutorials" => "tutorials.md",
         "NCBJ" => "ncbj.md",
+        "Matlab" => "matlab.md",
     ],
     warnonly = [:missing_docs, :cross_references]
 )
 
 deploydocs(
-    repo = "github.com/kitajusSus/Atractors-in-QGP.git",
+    repo = "github.com/kitajusSus/AttractorsQGP.jl.git",
     devbranch = "master",
 )
