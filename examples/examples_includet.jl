@@ -185,12 +185,34 @@ function przeprowadz_pelna_analize(N=1500, K_range=4:25, max_d=6)
     return wyniki_koncowe
 end
 
-if abspath(PROGRAM_FILE) == @__FILE__
-    paczka = przeprowadz_pelna_analize(2000, 5:30, 6)
-    
-    aleph, nazwy = symulacja_dims(2000, 12)
-    fig_widmo = plot_compare_dims(aleph, nazwy)
-    display(fig_widmo)
 
-    readline()
+
+function run_analiza()
+
+    paczka = przeprowadz_pelna_analize(2000, 5:30, 6)
+    for i in 1:30
+        for (nazwa, dane) in paczka
+            println("Zbiór: $(nazwa)")
+            println("Średnie skoki: $(dane.mean_ratios)")
+            println("Wariancje skoków: $(dane.var_ratios)")
+            println("--------------------------------------------------")
+        end        
+        aleph, nazwy = symulacja_dims(2000, i)
+        fig_widmo = plot_compare_dims(aleph, nazwy)
+        display(fig_widmo)
+    end
+    
+    return paczka, fig_widmo
 end
+
+
+
+# if abspath(PROGRAM_FILE) == @__FILE__
+#     paczka = przeprowadz_pelna_analize(2000, 5:30, 6)
+#
+#     aleph, nazwy = symulacja_dims(2000, 12)
+#     fig_widmo = plot_compare_dims(aleph, nazwy)
+#     display(fig_widmo)
+#
+#     readline()
+# end
