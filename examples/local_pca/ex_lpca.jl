@@ -1,5 +1,6 @@
 using Statistics
 using LinearAlgebra
+using AtractorsQGP
 
 function normalizuj_max(X_features)
     T_col = X_features[:, 1]
@@ -32,6 +33,10 @@ function ex_lpca(dataset_loadet, k_bazowe::Int, n_slices::Int)
 
     println("Tau | Śr. wymiar dla K=$(k_bazowe) | Śr. wymiar dla K=$(k_zmienione) | Zmiana (%)")
     println("-" ^ 75)
+    procenty = Float64[]
+    tau_values = Float64[]
+    mean_k1_values = Float64[]
+    mean_k2_values = Float64[]
 
     for tau in wybrane_tau
         idx, X_tau = get_tau_slice(dataset_loadet, tau; feature_cols=[2, 3])
@@ -45,6 +50,18 @@ function ex_lpca(dataset_loadet, k_bazowe::Int, n_slices::Int)
         
         diff_percent = mean_k1 > 0 ? ((mean_k2 - mean_k1) / mean_k1) * 100 : 0.0
         
+
         println(tau, " | ", mean_k1, " | ", mean_k2, " | ", diff_percent, "%")
+        push!(procenty, diff_percent)
+        push!(tau_values, tau)
+        push!(mean_k1_values, mean_k1)
+        push!(mean_k2_values, mean_k2)
     end
+    return tau_values, mean_k1_values, mean_k2_values, procenty;
+end
+
+
+
+function main_local_pca()
+    
 end
