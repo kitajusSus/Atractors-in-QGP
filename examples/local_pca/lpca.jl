@@ -2,17 +2,15 @@ using LinearAlgebra
 using NearestNeighbors
 using Statistics
 
-function dims(X; k=12, tol=0.1)
-    Xp = permutedims(X)  
-    n, d = size(Xp)
-
-    k = min(k, n)  
-    tree = KDTree(permutedims(Xp))  
-    out = zeros(Int, n)
+function dims(X; k=12, tol=1e-8)
+    n, d = size(X)
+    k = min(k, n)
+    tree = KDTree(X') 
+    out = zeros(Float64, n)
 
     for i in 1:n
-        idxs, _ = knn(tree, vec(Xp[i, :]), k, true)
-        neighbors = Xp[idxs, :]
+        idxs, _ = knn(tree, X[i, :], k, true)
+        neighbors = X[idxs, :]
 
         μ = mean(neighbors, dims=1)
         Y = neighbors .- μ
