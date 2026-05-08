@@ -1,3 +1,5 @@
+using GLMakie
+using LaTeXStrings
 using Statistics
 using LinearAlgebra
 using AtractorsQGP
@@ -61,7 +63,59 @@ function ex_lpca(dataset_loadet, k_bazowe::Int, n_slices::Int)
 end
 
 
+function main_local_pca(
+    dataset_loaded::AbstractMatrix{<:Real};
+    n_slices::Int = 15,
+    tablica_k::Vector{Int} = [10, 20, 30, 40]
+)
+    set_publication_theme()
 
-function main_local_pca()
+    fig = Figure(size = (950, 600))
+    ax = Axis(
+        fig[1, 1],
+        title = L"\text{Zależność wymiaru lokalnego od czasu własnego } \tau",
+        xlabel = L"\tau\,[\mathrm{fm}/c]",
+        ylabel = L"\text{Średni wymiar lokalny}",
+        limits = (nothing, nothing, 0.8, 2.2)
+    )
+
+    palette = Makie.wong_colors()
+
+    for (i, k_bazowe) in enumerate(tablica_k)
+        k_zmienione = k_bazowe * 2
+        
+        tau_vals, mean_k1, mean_k2, _ = ex_lpca(dataset_loaded, k_bazowe, n_slices)
+        
+        c = palette[mod1(i, length(palette))]
+
+        band!(
+            ax, 
+            tau_vals, 
+            mean_k1, 
+            mean_k2; 
+            color = (c, 0.25)
+        )
+
+        lines!(
+            ax, 
+            tau_vals, 
+            mean_k1; 
+            linewidth = 2.5, 
+            color = c, 
+            label = L"K \in [%$(k_bazowe), %$(k_zmienione)]"
+        )
+        
+        lines!(
+            ax, 
+            tau_vals, 
+            mean_k2; 
+            linewidth = 1.0, 
+            color = c, 
+            linestyle = :dash
+        )
+    end
+
+    axislegend(ax, position = :rt)
     
+    return fig
 end
