@@ -1,5 +1,5 @@
-using DifferentialEquations
 using StaticArrays
+using OrdinaryDiffEqRosenbrock
 
 """
 Solve hydrodynamic evolution for one initial condition.
@@ -13,10 +13,6 @@ solve_hydro(model::AbstractHydroModel, u0::AbstractVector{<:Real}, tspan::Tuple{
 )
 
 ```
-
-
-
-
 """
 function solve_hydro(model::AbstractHydroModel, u0::AbstractVector{<:Real}, tspan::Tuple{<:Real,<:Real};
     solver=Rodas5(),

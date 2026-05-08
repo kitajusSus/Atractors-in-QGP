@@ -4,20 +4,16 @@ using Statistics
 using LinearAlgebra
 using AtractorsQGP
 
-function normalizuj_max(X_features)
-    T_col = X_features[:, 1]
-    A_col = X_features[:, 2]
-    
-    T_max = maximum(abs.(T_col))
-    A_max = maximum(abs.(A_col))
-    
-    T_norm = T_col ./ (T_max == 0 ? 1.0 : T_max)
-    A_norm = A_col ./ (A_max == 0 ? 1.0 : A_max)
-    
-    return hcat(T_norm, A_norm)
+function normalizuj_max(X_features::AbstractMatrix{<:Real})
+    max_vals = maximum(abs.(X_features), dims=1)
+    max_vals[max_vals .== 0.0] .= 1.0
+    return X_features ./ max_vals
 end
 
-function get_tau_slice(dataset::AbstractMatrix{<:Real}, tau::Real; atol::Real=1e-12, feature_cols::AbstractVector{<:Integer}=collect(2:size(dataset, 2)))
+function get_tau_slice(dataset::AbstractMatrix{<:Real}, 
+                       tau::Real; atol::Real=1e-12, 
+                       feature_cols::AbstractVector{<:Integer}=collect(2:size(dataset, 2))
+                    )
     idx = findall(isapprox.(view(dataset, :, 1), tau; atol=atol))
     Xtau = Matrix{Float64}(dataset[idx, feature_cols])
     return idx, Xtau
@@ -25,7 +21,12 @@ end
 
 include("lpca.jl")
 
-function ex_lpca(dataset_loadet, k_bazowe::Int, n_slices::Int)
+function ex_lpca(
+    dataset_loadet, 
+    k_bazowe::Int, 
+    n_slices::Int; 
+    feature_cols::AbstractVector{<:Integer}=collect(2:size(dataset_loadet, 2))
+)
     taus = sort(unique(dataset_loadet[:, 1]))
     step = max(1, length(taus) ÷ n_slices)
     wybrane_tau = taus[1:step:end][1:n_slices]
@@ -35,13 +36,14 @@ function ex_lpca(dataset_loadet, k_bazowe::Int, n_slices::Int)
 
     println("Tau | Śr. wymiar dla K=$(k_bazowe) | Śr. wymiar dla K=$(k_zmienione) | Zmiana (%)")
     println("-" ^ 75)
+    
     procenty = Float64[]
     tau_values = Float64[]
     mean_k1_values = Float64[]
     mean_k2_values = Float64[]
 
     for tau in wybrane_tau
-        idx, X_tau = get_tau_slice(dataset_loadet, tau; feature_cols=[2, 3])
+        idx, X_tau = get_tau_slice(dataset_loadet, tau; feature_cols=feature_cols)
         X_norm = normalizuj_max(X_tau)
         
         dims_k1 = dims(X_norm; k=k_bazowe, tol=tolerancja)
@@ -52,21 +54,20 @@ function ex_lpca(dataset_loadet, k_bazowe::Int, n_slices::Int)
         
         diff_percent = mean_k1 > 0 ? ((mean_k2 - mean_k1) / mean_k1) * 100 : 0.0
         
-
         println(tau, " | ", mean_k1, " | ", mean_k2, " | ", diff_percent, "%")
         push!(procenty, diff_percent)
         push!(tau_values, tau)
         push!(mean_k1_values, mean_k1)
         push!(mean_k2_values, mean_k2)
     end
-    return tau_values, mean_k1_values, mean_k2_values, procenty;
+    return tau_values, mean_k1_values, mean_k2_values, procenty
 end
-
 
 function main_local_pca(
     dataset_loaded::AbstractMatrix{<:Real};
     n_slices::Int = 15,
-    tablica_k::Vector{Int} = [10, 20, 30, 40]
+    tablica_k::Vector{Int} = [10, 20, 30, 40],
+    feature_cols::AbstractVector{<:Integer} = collect(2:size(dataset_loaded, 2))
 )
     set_publication_theme()
 
@@ -75,8 +76,7 @@ function main_local_pca(
         fig[1, 1],
         title = L"\text{Zależność wymiaru lokalnego od czasu własnego } \tau",
         xlabel = L"\tau\,[\mathrm{fm}/c]",
-        ylabel = L"\text{Średni wymiar lokalny}",
-        limits = (nothing, nothing, 0.8, 2.2)
+        ylabel = L"\text{Średni wymiar lokalny}"
     )
 
     palette = Makie.wong_colors()
@@ -84,7 +84,7 @@ function main_local_pca(
     for (i, k_bazowe) in enumerate(tablica_k)
         k_zmienione = k_bazowe * 2
         
-        tau_vals, mean_k1, mean_k2, _ = ex_lpca(dataset_loaded, k_bazowe, n_slices)
+        tau_vals, mean_k1, mean_k2, _ = ex_lpca(dataset_loaded, k_bazowe, n_slices, feature_cols=feature_cols)
         
         c = palette[mod1(i, length(palette))]
 

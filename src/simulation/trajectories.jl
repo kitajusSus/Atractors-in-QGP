@@ -1,9 +1,6 @@
 using DifferentialEquations
 using ProgressMeter
-# using Trixie
-"""
-Solve  hydro equasions for a list of initial conditions.
-"""
+
 function generate_trajectories(
     model::AbstractHydroModel,
     initial_conditions::AbstractVector{<:AbstractVector{<:Real}},
@@ -24,13 +21,23 @@ function generate_trajectories(
 
     base_problem = first_solution.prob
 
-    function prob_func(prob, i, _)
+    function prob_func(prob, arg2, args...)
+        i = if isempty(args)
+            ctx = arg2
+            if hasproperty(ctx, :sim_id)
+                ctx.sim_id
+            else
+                error("Nieznana struktura EnsembleContext. Dostępne pola: $(propertynames(ctx))")
+            end
+        else
+            arg2
+        end
         remake(prob, u0=initial_conditions[i])
     end
 
     pasek = Progress(length(initial_conditions), 1, "Obliczanie trajektorii: ")
 
-    function output_func(sol, i)
+    function output_func(sol, arg2, args...)
         next!(pasek)
         return (sol, false)
     end
@@ -57,46 +64,29 @@ function generate_trajectories(
     return solutions
 end
 
-"""
-Build a dense matrix dataset from solution snapshots.
-Rows are samples, columns are [tau, T, A].
-Keyword `temperature_unit` controls T output unit (`:fm` or `:MeV`).
-```julia
-
-function build_dataset(solutions::AbstractVector)
-    n_rows = 0
-
-    data = Matrix{Float64}(undef, n_rows, 3)
-    @inbounds for sol in solutions
-        for i in eachindex(sol.t)
-        ###
-        end
-    end
-    return data
-end
-```
-"""
 function build_dataset(solutions::AbstractVector; temperature_unit::Symbol=:fm)
-    rows = Vector{NTuple{3,Float64}}()
-    sizehint!(rows, sum(length(sol.t) for sol in solutions))
-
+    n_rows = sum(length(sol.t) for sol in solutions)
+    data = Matrix{Float64}(undef, n_rows, 3)
+    hbarc = 197.3269804
+    
+    row_idx = 1
     @inbounds for sol in solutions
         for i in eachindex(sol.t)
-            state = sol.u[i]
-            τ = Float64(sol.t[i])
-            T = to_temperature_unit(state[1], temperature_unit)
-            A = Float64(state[2])
+            tau = sol.t[i]
+            T   = sol.u[i][1]
+            A   = sol.u[i][2]
 
-            if isfinite(τ) && isfinite(T) && isfinite(A)
-                push!(rows, (τ, T, A))
+            if temperature_unit === :MeV
+                T = T * hbarc
             end
+
+            data[row_idx, 1] = tau
+            data[row_idx, 2] = T
+            data[row_idx, 3] = A
+            
+            row_idx += 1
         end
     end
-
-    data = Matrix{Float64}(undef, length(rows), 3)
-    @inbounds for i in eachindex(rows)
-        data[i, 1], data[i, 2], data[i, 3] = rows[i]
-    end
-
+    
     return data
 end
