@@ -1,3 +1,7 @@
 [deps]
 AtractorsQGP = "3aa772ee-73c7-4728-8ce2-799db91c0e5f"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+
+[compat]
+julia = "1.12"
+Documenter = "1"
