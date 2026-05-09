@@ -1,17 +1,10 @@
-using CairoMakie
+using GLMakie 
 using LaTeXStrings
 using ColorSchemes
 
-"""
-Apply the default Makie theme used by this package.
 
-Returns `nothing` and updates Makie's global active theme.
-
-```julia
-set_publication_theme()
-```
-"""
 function set_publication_theme()
+    hawaii_palette = Makie.resample_cmap(:batlow25, 25)
     set_theme!(
         Theme(
             font = "TeX Gyre Heros",
@@ -40,15 +33,64 @@ function set_publication_theme()
                 backgroundcolor = RGBAf(0.94, 0.94, 0.94, 0.70),
                 position = :rt,
             ),
-            Palette = (color = Makie.wong_colors(),),
+            Palette = ( 
+                color = hawaii_palette,
+                patchcolor = hawaii_palette, 
+            ),
         ),
     )
 end
 
+function set_publication_theme_large()
+    hawaii_palette = Makie.resample_cmap(:hawaii, 50)
+    set_theme!(
+        Theme(
+            font = "Libertinus", 
+            fontsize = 35,           
+            figure_padding = 30,
+            Axis = (
+                titlesize = 50,
+                xlabelsize = 35,
+                ylabelsize = 35,
+                xticklabelsize = 28,
+                yticklabelsize = 28,
+                backgroundcolor = RGBf(1.0, 1.0, 1.0),
+                xgridstyle = :dash,
+                ygridstyle = :dash,
+                xgridcolor = RGBAf(0.85, 0.85, 0.85, 0.65),
+                ygridcolor = RGBAf(0.85, 0.85, 0.85, 0.65),
+                spinewidth = 2.0,     
+                xtickwidth = 2.0,
+                ytickwidth = 2.0,
+                xgridwidth = 1.5,
+                ygridwidth = 1.5,
+                xticksize = 10,       
+                yticksize = 10,
+                xtickalign = 1.0,
+                ytickalign = 1.0,
+                topspinevisible = true,
+                rightspinevisible = true,
+            ),
+            Legend = (
+                titlesize = 28,
+                labelsize = 24,
+                framevisible = true,
+                framewidth = 1.5,
+                framecolor = RGBAf(0.8, 0.8, 0.8, 1.0),
+                backgroundcolor = RGBAf(1.0, 1.0, 1.0, 0.85),
+                position = :rt,
+                padding = (12.0, 12.0, 12.0, 12.0),
+            ),
+            Palette = ( # <-- Zastosowanie nowej palety
+                color = hawaii_palette,
+                patchcolor = hawaii_palette, 
+            ),
+            Lines = (linewidth = 3.0,),
+            Scatter = (markersize = 12,)
+        )
+    )
+end
 
-"""
-Dla dużych wykresów wieksza czcionka itd 
-"""
 function set_publication_theme_large()
     set_theme!(
         Theme(
@@ -85,11 +127,11 @@ function set_publication_theme_large()
                 titlesize = 28,
                 labelsize = 24,
                 framevisible = true,
-                framewidth = 1.5,     # Grubsza ramka legendy
+                framewidth = 1.5,
                 framecolor = RGBAf(0.8, 0.8, 0.8, 1.0),
                 backgroundcolor = RGBAf(1.0, 1.0, 1.0, 0.85),
                 position = :rt,
-                padding = (12.0, 12.0, 12.0, 12.0), # Więcej oddechu wewnątrz
+                padding = (12.0, 12.0, 12.0, 12.0),
             ),
             Palette = (color = Makie.wong_colors(),),
             Lines = (
@@ -110,20 +152,6 @@ const PLOT_KEYS = Dict(
     :tau2A => (L"\tau^2 \mathcal{A}", x -> x[1]^2 * x[3]),
 )
 
-"""
-Resolve an axis definition used by plotting helpers.
-
-Accepted formats:
-- `Symbol` key from `PLOT_KEYS` (for example `:T`, `:A`, `:tauT`)
-- `(label, fn)` tuple where `fn(row)` computes axis value from one dataset row
-
-Returns `(label, fn)`.
-
-```julia
-resolve_def(:T)
-resolve_def(("custom", row -> row[2] / row[1]))
-```
-"""
 function resolve_def(def)
     if def isa Symbol
         @assert haskey(PLOT_KEYS, def) "Unknown plot key: $def"
@@ -137,18 +165,6 @@ function resolve_def(def)
     error("Axis definition must be Symbol or Tuple(label, function).")
 end
 
-"""
-Extract x/y arrays for a selected simulation time.
-
-The dataset must have columns `[tau, T, A]`.
-If exact `t` is not present, the nearest available `tau` slice is used.
-
-Returns a named tuple `(x, y, xlabel, ylabel)`.
-
-```julia
-get_data(dataset, 0.6, :tauT, :A)
-```
-"""
 function get_data(dataset::AbstractMatrix{<:Real}, t::Real, xdef, ydef)
     @assert size(dataset, 2) == 3 "Dataset must have columns [tau, T, A]."
 
@@ -168,18 +184,6 @@ function get_data(dataset::AbstractMatrix{<:Real}, t::Real, xdef, ydef)
     return (x = x, y = y, xlabel = xlbl, ylabel = ylbl)
 end
 
-"""
-Split a stacked dataset into trajectory row ranges.
-
-Assumes rows are ordered by time inside each trajectory and that a new trajectory
-starts when `tau` stops increasing.
-
-Returns a vector of `UnitRange{Int}` that can be used for plotting each line.
-
-```julia
-ranges = _split_trajectories(dataset)
-```
-"""
 function _split_trajectories(dataset::AbstractMatrix{<:Real})
     @assert size(dataset, 2) == 3 "Dataset must have columns [tau, T, A]."
     if size(dataset, 1) == 0
@@ -192,7 +196,7 @@ function _split_trajectories(dataset::AbstractMatrix{<:Real})
             push!(starts, i)
         end
     end
- # to  definicja typu dla ranges to samo co ranges = [1:0.1:15...]
+
     ranges = UnitRange{Int}[]
     for k in eachindex(starts)
         s = starts[k]
@@ -202,23 +206,10 @@ function _split_trajectories(dataset::AbstractMatrix{<:Real})
     return ranges
 end
 
-"""
-Create a grid of phase-space snapshots for selected times.
-
-`times` is an iterable of requested `tau` values.
-`xdef` and `ydef` can be symbols from `PLOT_KEYS` or `(label, fn)` tuples.
-
-Returns a `Figure`.
-
-
-> example for repl
-```julia
-plot_phase_space_grid(dataset, [0.3, 0.5, 0.7], :tauT, :A)
-```
-"""
 function plot_phase_space_grid(dataset::AbstractMatrix{<:Real}, times, xdef, ydef)
     set_publication_theme()
-
+    
+    palette = Makie.theme(:Palette).color[]
     n = length(times)
     ncols = min(3, n)
     nrows = ceil(Int, n / ncols)
@@ -235,28 +226,15 @@ function plot_phase_space_grid(dataset::AbstractMatrix{<:Real}, times, xdef, yde
             xlabel = d.xlabel,
             ylabel = d.ylabel,
         )
-
-        scatter!(ax, d.x, d.y; markersize = 2.4, color = :midnightblue, alpha = 0.72)
+        
+        scatter!(ax, d.x, d.y; markersize = 3.0, color = (palette[2], 0.80))
     end
-
-    fig
+    return fig
 end
 
-"""
-Plot time evolution of temperature `T` and anisotropy `A` for all trajectories.
-
-The input dataset must contain stacked trajectories in columns `[tau, T, A]`.
-
-Returns a `Figure` with two linked x-axes.
-
-```julia
-plot_thermodynamics_evolution(dataset)
-```
-"""
 function plot_thermodynamics_evolution(dataset::AbstractMatrix{<:Real})
     set_publication_theme()
     trajs = _split_trajectories(dataset)
-
     fig = Figure(size = (950, 620))
     ax1 = Axis(
         fig[1, 1],
@@ -270,8 +248,8 @@ function plot_thermodynamics_evolution(dataset::AbstractMatrix{<:Real})
             ax1,
             dataset[tr, 1],
             dataset[tr, 2],
-            color = (:dodgerblue, 0.20),
-            linewidth = 1.2,
+            color = (palette[1], 0.20),
+            linewidth = 1.5,
         )
     end
 
@@ -287,17 +265,17 @@ function plot_thermodynamics_evolution(dataset::AbstractMatrix{<:Real})
             ax2,
             dataset[tr, 1],
             dataset[tr, 3],
-            color = (:dodgerblue, 0.20),
-            linewidth = 1.2,
+            color = (palette[1], 0.20),
+            linewidth = 1.5,
         )
     end
 
     hlines!(
         ax2,
         [0.0],
-        color = :red,
+        color = palette[2], 
         linestyle = :dash,
-        linewidth = 1.8,
+        linewidth = 2.0,
         label = L"\mathcal{A}=0\;(\text{Anizotropia} = 0)",
     )
     axislegend(ax2, position = :rt)
@@ -306,17 +284,6 @@ function plot_thermodynamics_evolution(dataset::AbstractMatrix{<:Real})
     return fig
 end
 
-"""
-Plot explained variance ratio (EVR) over time.
-
-PCA is computed independently for each `tau` slice via `run_pca_per_time`.
-
-Returns a `Figure`.
-
-```julia
-plot_pca_evr_over_time(dataset; n_components=2, method=:minmax, feature_cols=[2, 3])
-```
-"""
 function plot_pca_evr_over_time(
     dataset::AbstractMatrix{<:Real};
     n_components::Int = 2,
@@ -341,13 +308,13 @@ function plot_pca_evr_over_time(
         fig[1, 1],
         title = L"\text{Explained Variance (EVR) w funkcji czasu dla zmiennych } \mathcal{A} \text{ i } T/T_0",
         xlabel = L"\tau\,[\mathrm{fm}/c]",
-        ylabel = L"EVR",
+        ylabel = L"\text{EVR}",
         limits = (0.20, maximum(taus), 0, 1.05),
     )
 
-    hlines!(ax, [1.0], color = :gray45, linestyle = :dash, label = "100%")
+    hlines!(ax, [1.0], color = :gray45, linestyle = :dash, label = L"100\%")
 
-    palette = Makie.wong_colors()
+    palette = Makie.theme(:Palette, :color)[]
     for comp = 1:n_components
         vals = evr[:, comp]
         mask = .!isnan.(vals)
@@ -356,9 +323,9 @@ function plot_pca_evr_over_time(
                 ax,
                 taus[mask],
                 vals[mask],
-                linewidth = 2.8,
-                color = palette[min(comp, end)],
-                label = "PC$(comp)",
+                linewidth = 3.0,
+                color = palette[min(comp, length(palette))],
+                label = L"\text{PC}%$(comp)",
             )
             if comp == 1
                 band!(
@@ -366,45 +333,16 @@ function plot_pca_evr_over_time(
                     taus[mask],
                     zeros(sum(mask)),
                     vals[mask],
-                    color = (palette[1], 0.10),
+                    color = (palette[1], 0.15),
                 )
             end
         end
     end
 
     axislegend(ax, position = :rb)
-    fig
+    return fig
 end
 
-"""
-    plot_pca_summary(
-        dataset::AbstractMatrix{<:Real};
-        tau::Union{Nothing,Real}=nothing,
-        tau_tol::Float64=1e-8,
-        tau_mode::Symbol=:nearest,
-        n_components::Int=2,
-        method::Symbol=:minmax,
-        gamma::Float64=1.0,
-    )
-
-DONT USE THIS FUNCTION DIRECTLY. Use `plot_pca_evr_over_time` instead.
-This helper plots a PCA summary for a single dataset slice.
-
-Dataset columns are expected as `[tau, T, A, ...]`.
-If `tau` is provided, rows are selected according to `tau_mode`:
-
-- `:strict`  -> use rows with `abs(tau - tau) <= tau_tol`
-- `:nearest` -> if strict match exists, use it; otherwise use nearest available tau
-
-If `tau === nothing`, all rows are used (legacy behavior).
-
-Left panel: projection on principal components.
-Right panel: explained variance ratio (EVR).
-
-`method` can be `:minmax` (standard PCA pipeline) or `:kernel`.
-
-Returns a `Figure`.
-"""
 function plot_pca_summary(
     dataset::AbstractMatrix{<:Real};
     tau::Union{Nothing,Real} = nothing,
@@ -418,10 +356,11 @@ function plot_pca_summary(
     @assert tau_tol >= 0 "tau_tol must be >= 0."
     @assert tau_mode in (:strict, :nearest) "tau_mode must be :strict or :nearest."
 
+    palette = Makie.theme(:Palette, :color)[]
     set_publication_theme()
 
     data = Matrix{Float64}(dataset)
-    subtitle = "all τ"
+    subtitle = L"\text{Wszystkie } \tau"
 
     if tau !== nothing
         τ = Float64(tau)
@@ -431,7 +370,7 @@ function plot_pca_summary(
 
         if any(strict_mask)
             data = data[strict_mask, :]
-            subtitle = "τ=$(τ) ± $(tau_tol)"
+            subtitle = L"\tau=%$(τ) \pm %$(tau_tol)"
         else
             if tau_mode === :strict
                 error("No rows found for tau=$(τ) within tau_tol=$(tau_tol).")
@@ -440,13 +379,12 @@ function plot_pca_summary(
                 τnearest = τcol[i]
                 near_mask = τcol .== τnearest
                 data = data[near_mask, :]
-                @warn "No exact tau slice for tau=$(τ) within tau_tol=$(tau_tol). Using nearest tau=$(τnearest)."
-                subtitle = "requested τ=$(τ), using nearest τ=$(τnearest)"
+                subtitle = L"\text{najbliższe } \tau=%$(τnearest)"
             end
         end
     end
 
-    features = data[:, 2:3]  # [T, A]
+    features = data[:, 2:3]
     @assert size(features, 1) > 1 "Need at least two samples in selected tau slice."
 
     pca_result = if method === :minmax
@@ -465,9 +403,9 @@ function plot_pca_summary(
 
     ax_proj = Axis(
         fig[1, 1],
-        xlabel = "PC1",
-        ylabel = "PC2",
-        title = "PCA projection ($subtitle)",
+        xlabel = L"\text{PC1}",
+        ylabel = L"\text{PC2}",
+        title = L"\text{Projekcja PCA } (%$subtitle)",
     )
     if n_show >= 2
         scatter!(
@@ -475,7 +413,7 @@ function plot_pca_summary(
             transformed[:, 1],
             transformed[:, 2];
             markersize = 4.5,
-            color = (:midnightblue, 0.75),
+            color = (palette[1], 0.75),
         )
     elseif n_show == 1
         scatter!(
@@ -483,30 +421,28 @@ function plot_pca_summary(
             transformed[:, 1],
             zeros(size(transformed, 1));
             markersize = 4.5,
-            color = (:midnightblue, 0.75),
+            color = (palette[1], 0.75),
         )
     end
 
     ax_evr = Axis(
         fig[1, 2],
-        xlabel = "Principal component",
-        ylabel = "EVR",
+        xlabel = L"\text{Główna składowa}",
+        ylabel = L"\text{EVR}",
         limits = (0.5, max(length(evr), 1) + 0.5, 0, 1),
-        title = "Explained variance ratio",
+        title = L"\text{Współczynnik wariancji wyjaśnionej}",
     )
     if !isempty(evr)
-        barplot!(ax_evr, 1:length(evr), evr; color = :slateblue3)
+        barplot!(ax_evr, 1:length(evr), evr; color = palette[2])
     end
 
     return fig
-
 end
-
-
 
 function plot_lle_dim(dataset::AbstractMatrix{<:Real}, k::Int, d::Int, tau::Real)
     set_publication_theme()
 
+    palette = Makie.theme(:Palette, :color)[]
     lle_data = run_lle_per_time(dataset; k = k, d = d)
 
     if !haskey(lle_data.lle_results, tau)
@@ -516,66 +452,64 @@ function plot_lle_dim(dataset::AbstractMatrix{<:Real}, k::Int, d::Int, tau::Real
     embedding = lle_data.lle_results[tau]
 
     fig = Figure(size = (600, 500))
-    ax = Axis(fig[1, 1], title = "LLE: k=$k neighbors, d=$d dimensions, tau=$tau")
+    ax = Axis(
+        fig[1, 1], 
+        title = L"\text{LLE: } k=%$k, d=%$d, \tau=%$tau"
+    )
 
     if d == 1
-        ax.xlabel = "LLE1"
-        ax.ylabel = "Wartość stała"
+        ax.xlabel = L"\text{LLE1}"
+        ax.ylabel = L"\text{Wartość stała}"
         scatter!(
             ax,
             embedding[:, 1],
             zeros(size(embedding, 1));
             markersize = 4.5,
-            color = (:midnightblue, 0.75),
+            color = (palette[1], 0.75),
         )
     else
-        ax.xlabel = "LLE1"
-        ax.ylabel = "LLE2"
+        ax.xlabel = L"\text{LLE1}"
+        ax.ylabel = L"\text{LLE2}"
         scatter!(
             ax,
             embedding[:, 1],
             embedding[:, 2];
             markersize = 4.5,
-            color = (:midnightblue, 0.75),
+            color = (palette[1], 0.75),
         )
     end
 
     return fig
 end
 
-"""
-    function plot_lle_dim!(ax::Axis, dataset::AbstractMatrix{<:Real}, k::Int, d::Int, tau::Real)
-Helper function to plot LLE embedding for a single tau slice on an existing axis.
-Dataset columns are expected as `[tau, T, A, ...]`.
-The LLE embedding is computed via `run_lle_per_time` and plotted as a scatter
-plot. The axis title is set to indicate the LLE parameters.
-
-"""
 function plot_lle_dim!(ax::Axis, dataset::AbstractMatrix{<:Real}, k::Int, d::Int, tau::Real)
+    set_publication_theme()
+
+    palette = Makie.theme(:Palette, :color)[]
     lle_data = run_lle_per_time(dataset; k = k, d = d)
     embedding = lle_data.lle_results[tau]
 
     ax.title = L"\text{LLE: } k=%$k, d=%$d, \tau=%$tau"
 
     if d == 1
-        ax.xlabel = "Odwzorowanie 1"
-        ax.ylabel = "Wartość stała"
+        ax.xlabel = L"\text{Odwzorowanie 1}"
+        ax.ylabel = L"\text{Wartość stała}"
         scatter!(
             ax,
             embedding[:, 1],
             zeros(size(embedding, 1));
             markersize = 4.5,
-            color = (:midnightblue, 0.75),
+            color = (palette[1], 0.75),
         )
     else
-        ax.xlabel = "Odwzorowanie LLE1"
-        ax.ylabel = "Odwzorowanie LLE2"
+        ax.xlabel = L"\text{Odwzorowanie LLE1}"
+        ax.ylabel = L"\text{Odwzorowanie LLE2}"
         scatter!(
             ax,
             embedding[:, 1],
             embedding[:, 2];
             markersize = 4.5,
-            color = (:midnightblue, 0.75),
+            color = (palette[1], 0.75),
         )
     end
     return nothing
@@ -584,6 +518,7 @@ end
 function plot_simulation_lle(dataset::AbstractMatrix{<:Real}, k::Int, d::Int, tau_zakres)
     set_publication_theme()
 
+    palette = Makie.theme(:Palette, :color)[]
     liczba_wykresow = length(tau_zakres)
     kolumny = 2
     wiersze = ceil(Int, liczba_wykresow / kolumny)
@@ -602,6 +537,7 @@ function plot_simulation_lle(dataset::AbstractMatrix{<:Real}, k::Int, d::Int, ta
 
     return fig
 end
+
 function animate_pca_evolution(
     dataset::AbstractMatrix{<:Real};
     filename::String = "pca_evolution.gif",
@@ -613,15 +549,16 @@ function animate_pca_evolution(
 )
     set_publication_theme()
 
+    palette = Makie.theme(:Palette, :color)[]
     taus = sort(unique(dataset[:, 1]))
 
     fig = Figure(size = (800, 600))
 
-    title_obs = Observable("PCA projection (tau = $(taus[1]))")
+    title_obs = Observable(L"\text{Projekcja PCA } (\tau = %$(taus[1]))")
     ax = Axis(
         fig[1, 1],
-        xlabel = "PC1",
-        ylabel = "PC2",
+        xlabel = L"\text{PC1}",
+        ylabel = L"\text{PC2}",
         title = title_obs
     )
 
@@ -631,11 +568,12 @@ function animate_pca_evolution(
         ax,
         pts_obs;
         markersize = 6.0,
-        color = (:midnightblue, 0.75)
+        color = (palette[1], 0.75)
     )
 
     record(fig, filename, taus; framerate = fps) do t
-        title_obs[] = "PCA projection (tau = $(round(t, digits=3)))"
+        val = round(t, digits=3)
+        title_obs[] = L"\text{Projekcja PCA } (\tau = %$(val))"
 
         d = abs.(dataset[:, 1] .- t)
         mask = d .<= tau_tol

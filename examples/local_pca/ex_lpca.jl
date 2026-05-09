@@ -79,7 +79,7 @@ function main_local_pca(
         ylabel = L"\text{Średni wymiar lokalny}"
     )
 
-    palette = Makie.wong_colors()
+    palette = Makie.theme(:Palette).colors[]
 
     for (i, k_bazowe) in enumerate(tablica_k)
         k_zmienione = k_bazowe * 2
