@@ -1,9 +1,6 @@
 
 
 using TaylorSeries
-
-
-
 using Symbolics
 
 

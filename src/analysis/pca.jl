@@ -1,8 +1,8 @@
 using LinearAlgebra
 using Statistics
 using Random
-using MultivariateStats
-
+using MultivariateStats: fit as msfit
+import MultivariateStats as MS
 """
     explained_variance_ratio_from_svd(S::AbstractVector{<:Real}, n_samples::Integer)
 
@@ -134,7 +134,7 @@ function run_pca_kernel(
     end
 
     kernel = (x, y) -> exp(-gamma * sum(abs2, x .- y))
-    model = fit(KernelPCA, X'; kernel=kernel, maxoutdim=k)
+    model = msfit(KernelPCA, X'; kernel=kernel, maxoutdim=k)
     transformed = MultivariateStats.transform(model, X')'
 
     ev = Float64.(eigvals(model))

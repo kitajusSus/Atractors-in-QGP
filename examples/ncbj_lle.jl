@@ -3,7 +3,7 @@ using GLMakie
 using LinearAlgebra
 const dx = 1e-3
 
-"""
+"""@docs
     ncbj1_macierz_wszyskich_punktów(x::Vector{Float32})
 
 Input:  wektor punktór `x` [1:10...] lub inne sposoby na uzycie wektorów
@@ -14,8 +14,7 @@ Output:
 macierz punktów x_i [x,y]
 
 
-```julia
-
+```
 function ncbj1_macierz_wszyskich_punktów!(x::Vector{Number})
     y = 1f-3 ./ x
     return hcat(x, y)'

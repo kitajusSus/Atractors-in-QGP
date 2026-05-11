@@ -234,6 +234,8 @@ end
 
 function plot_thermodynamics_evolution(dataset::AbstractMatrix{<:Real})
     set_publication_theme()
+
+    palette = Makie.theme(:Palette).color[]
     trajs = _split_trajectories(dataset)
     fig = Figure(size = (950, 620))
     ax1 = Axis(
@@ -293,6 +295,7 @@ function plot_pca_evr_over_time(
 )
     set_publication_theme_large()
 
+    palette = Makie.theme(:Palette).color[]
     result = run_pca_per_time(
         dataset;
         n_components = n_components,
@@ -314,7 +317,7 @@ function plot_pca_evr_over_time(
 
     hlines!(ax, [1.0], color = :gray45, linestyle = :dash, label = L"100\%")
 
-    palette = Makie.theme(:Palette, :color)[]
+    palette = Makie.theme(:Palette).color[]
     for comp = 1:n_components
         vals = evr[:, comp]
         mask = .!isnan.(vals)
@@ -356,9 +359,9 @@ function plot_pca_summary(
     @assert tau_tol >= 0 "tau_tol must be >= 0."
     @assert tau_mode in (:strict, :nearest) "tau_mode must be :strict or :nearest."
 
-    palette = Makie.theme(:Palette, :color)[]
     set_publication_theme()
 
+    palette = Makie.theme(:Palette).color[]
     data = Matrix{Float64}(dataset)
     subtitle = L"\text{Wszystkie } \tau"
 
