@@ -1,95 +1,82 @@
 using GLMakie 
 using LaTeXStrings
 using ColorSchemes
-
-
 function set_publication_theme()
-    hawaii_palette = Makie.resample_cmap(:batlow25, 25)
+    scientific_palette = Makie.resample_cmap(:haline, 10) 
+
     set_theme!(
         Theme(
-            font = "TeX Gyre Heros",
-            fontsize = 35,
+            font = "Libertinus Serif", 
+            fontsize = 24, 
             figure_padding = 20,
+
             Axis = (
-                titlesize = 25,
-                xlabelsize = 22,
-                ylabelsize = 22,
-                xticklabelsize = 18,
-                yticklabelsize = 18,
-                backgroundcolor = RGBf(0.94, 0.94, 0.94),
+                backgroundcolor = :white,
+                titlesize = 28,
+                xlabelsize = 26,
+                ylabelsize = 26,
+                xticklabelsize = 20,
+                yticklabelsize = 20,
+
                 xgridstyle = :dash,
                 ygridstyle = :dash,
-                xgridcolor = RGBAf(0.80, 0.80, 0.80, 0.65),
-                ygridcolor = RGBAf(0.80, 0.80, 0.80, 0.65),
-                spinewidth = 1.2,
-                xtickwidth = 1.2,
-                ytickwidth = 1.2,
+                xgridcolor = RGBAf(0.85, 0.85, 0.85, 0.6),
+                ygridcolor = RGBAf(0.85, 0.85, 0.85, 0.6),
+
+                spinewidth = 1.5,
+                bottomspinecolor = :black,
+                leftspinecolor = :black,
+                topspinecolor = :black,
+                rightspinecolor = :black,
                 topspinevisible = true,
                 rightspinevisible = true,
+
+               xtickalign = 1.0,
+                ytickalign = 1.0,
+                xticksize = 12,
+                yticksize = 12,
+                xtickwidth = 1.5,
+                ytickwidth = 1.5,
+                xtickcolor = :black,
+                ytickcolor = :black,
+                
+                xminorticksvisible = true,
+                yminorticksvisible = true,
+                xminortickalign = 1.0,
+                yminortickalign = 1.0,
+                xminorticksize = 6,
+                yminorticksize = 6,
+                xminortickwidth = 1.0,
+                yminortickwidth = 1.0,
             ),
+            
             Legend = (
                 framevisible = true,
-                framewidth = 1.0,
-                backgroundcolor = RGBAf(0.94, 0.94, 0.94, 0.70),
+                framewidth = 1.2,
+                framecolor = :black,
+                backgroundcolor = RGBAf(1.0, 1.0, 1.0, 0.90), 
                 position = :rt,
+                titlesize = 22,
+                labelsize = 20,
+                padding = (10.0, 10.0, 10.0, 10.0),
             ),
+
+            Lines = (
+                linewidth = 2.5, 
+            ),
+            Scatter = (
+                markersize = 10,
+                strokewidth = 0.5, 
+                strokecolor = :black,
+            ),
+
             Palette = ( 
-                color = hawaii_palette,
-                patchcolor = hawaii_palette, 
+                color = scientific_palette,
+                patchcolor = scientific_palette, 
             ),
-        ),
+        )
     )
 end
-#
-# function set_publication_theme_large()
-#     hawaii_palette = Makie.resample_cmap(:hawaii, 50)
-#     set_theme!(
-#         Theme(
-#             font = "Libertinus", 
-#             fontsize = 35,           
-#             figure_padding = 30,
-#             Axis = (
-#                 titlesize = 50,
-#                 xlabelsize = 35,
-#                 ylabelsize = 35,
-#                 xticklabelsize = 28,
-#                 yticklabelsize = 28,
-#                 backgroundcolor = RGBf(1.0, 1.0, 1.0),
-#                 xgridstyle = :dash,
-#                 ygridstyle = :dash,
-#                 xgridcolor = RGBAf(0.85, 0.85, 0.85, 0.65),
-#                 ygridcolor = RGBAf(0.85, 0.85, 0.85, 0.65),
-#                 spinewidth = 2.0,     
-#                 xtickwidth = 2.0,
-#                 ytickwidth = 2.0,
-#                 xgridwidth = 1.5,
-#                 ygridwidth = 1.5,
-#                 xticksize = 10,       
-#                 yticksize = 10,
-#                 xtickalign = 1.0,
-#                 ytickalign = 1.0,
-#                 topspinevisible = true,
-#                 rightspinevisible = true,
-#             ),
-#             Legend = (
-#                 titlesize = 28,
-#                 labelsize = 24,
-#                 framevisible = true,
-#                 framewidth = 1.5,
-#                 framecolor = RGBAf(0.8, 0.8, 0.8, 1.0),
-#                 backgroundcolor = RGBAf(1.0, 1.0, 1.0, 0.85),
-#                 position = :rt,
-#                 padding = (12.0, 12.0, 12.0, 12.0),
-#             ),
-#             Palette = ( # <-- Zastosowanie nowej palety
-#                 color = hawaii_palette,
-#                 patchcolor = hawaii_palette, 
-#             ),
-#             Lines = (linewidth = 3.0,),
-#             Scatter = (markersize = 12,)
-#         )
-#     )
-# end
 #
 const PLOT_KEYS = Dict(
     :T => (L"T\,[\mathrm{fm}^{-1}]", x -> x[2]),

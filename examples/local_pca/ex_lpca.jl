@@ -74,13 +74,15 @@ function main_local_pca(
     fig = Figure(size = (950, 600))
     ax = Axis(
         fig[1, 1],
-        title = L"\text{Zależność wymiaru lokalnego od czasu własnego } \tau",
+        title = L"\text{Wpływ parametru } K \text{ na działanie Algorytmu L-PCA jako  }   f(\tau)",
         xlabel = L"\tau\,[\mathrm{fm}/c]",
-        ylabel = L"\text{Średni wymiar lokalny}"
+        ylabel = L"\text{Średni wymiar lokalny}",
+        xticks = LinearTicks(15), 
+        yticks = LinearTicks(20)
     )
 
-    palette = Makie.theme(:Palette).colors[]
-
+    # palette = Makie.theme(:Palette).color[]
+    palette = [:crimson, :dodgerblue, :forestgreen, :darkorange, :purple]
     for (i, k_bazowe) in enumerate(tablica_k)
         k_zmienione = k_bazowe * 2
         
