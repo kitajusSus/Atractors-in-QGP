@@ -42,56 +42,6 @@ function set_publication_theme()
 end
 
 function set_publication_theme_large()
-    hawaii_palette = Makie.resample_cmap(:hawaii, 50)
-    set_theme!(
-        Theme(
-            font = "Libertinus", 
-            fontsize = 35,           
-            figure_padding = 30,
-            Axis = (
-                titlesize = 50,
-                xlabelsize = 35,
-                ylabelsize = 35,
-                xticklabelsize = 28,
-                yticklabelsize = 28,
-                backgroundcolor = RGBf(1.0, 1.0, 1.0),
-                xgridstyle = :dash,
-                ygridstyle = :dash,
-                xgridcolor = RGBAf(0.85, 0.85, 0.85, 0.65),
-                ygridcolor = RGBAf(0.85, 0.85, 0.85, 0.65),
-                spinewidth = 2.0,     
-                xtickwidth = 2.0,
-                ytickwidth = 2.0,
-                xgridwidth = 1.5,
-                ygridwidth = 1.5,
-                xticksize = 10,       
-                yticksize = 10,
-                xtickalign = 1.0,
-                ytickalign = 1.0,
-                topspinevisible = true,
-                rightspinevisible = true,
-            ),
-            Legend = (
-                titlesize = 28,
-                labelsize = 24,
-                framevisible = true,
-                framewidth = 1.5,
-                framecolor = RGBAf(0.8, 0.8, 0.8, 1.0),
-                backgroundcolor = RGBAf(1.0, 1.0, 1.0, 0.85),
-                position = :rt,
-                padding = (12.0, 12.0, 12.0, 12.0),
-            ),
-            Palette = ( # <-- Zastosowanie nowej palety
-                color = hawaii_palette,
-                patchcolor = hawaii_palette, 
-            ),
-            Lines = (linewidth = 3.0,),
-            Scatter = (markersize = 12,)
-        )
-    )
-end
-
-function set_publication_theme_large()
     set_theme!(
         Theme(
             font = "Libertinus", 
