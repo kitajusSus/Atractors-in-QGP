@@ -1,6 +1,9 @@
+
+using ColorSchemes
 using GLMakie 
 using LaTeXStrings
-using ColorSchemes
+
+
 function set_publication_theme()
     scientific_palette = Makie.resample_cmap(:haline, 10) 
 
@@ -225,10 +228,13 @@ function plot_pca_evr_over_time(
     method::Symbol = :minmax,
     gamma::Float64 = 1.0,
     feature_cols::AbstractVector{<:Integer} = collect(2:size(dataset, 2)),
+    plot_title::Union{String, LaTeXString} = L"\text{Explained Variance Ratio (EVR) w funkcji czasu}",
+    x_label::Union{String, LaTeXString} = L"\tau\,[\mathrm{fm}/c]",
+    y_label::Union{String, LaTeXString} = L"\text{EVR}",
+    tau_min::Union{Real, Nothing} = nothing 
 )
     set_publication_theme()
 
-    palette = Makie.theme(:Palette).color[]
     result = run_pca_per_time(
         dataset;
         n_components = n_components,
@@ -239,18 +245,21 @@ function plot_pca_evr_over_time(
     taus = result.taus
     evr = result.explained_variance_ratio
 
-    fig = Figure(size = (1600, 1000))
+    t_min = isnothing(tau_min) ? minimum(taus) : Float64(tau_min)
+
+    fig = Figure(size = (850, 600))
     ax = Axis(
         fig[1, 1],
-        title = L"\text{Explained Variance (EVR) w funkcji czasu dla zmiennych } \mathcal{A} \text{ i } T/T_0",
-        xlabel = L"\tau\,[\mathrm{fm}/c]",
-        ylabel = L"\text{EVR}",
-        limits = (0.20, maximum(taus), 0, 1.05),
+        title = plot_title,
+        xlabel = x_label,
+        ylabel = y_label,
+        limits = (t_min, maximum(taus), 0, 1.05),
     )
 
     hlines!(ax, [1.0], color = :gray45, linestyle = :dash, label = L"100\%")
 
     palette = Makie.theme(:Palette).color[]
+    
     for comp = 1:n_components
         vals = evr[:, comp]
         mask = .!isnan.(vals)
@@ -263,22 +272,21 @@ function plot_pca_evr_over_time(
                 color = palette[min(comp, length(palette))],
                 label = L"\text{PC}%$(comp)",
             )
-            if comp == 1
-                band!(
-                    ax,
-                    taus[mask],
-                    zeros(sum(mask)),
-                    vals[mask],
-                    color = (palette[1], 0.15),
-                )
-            end
+            # if comp == 1
+            #     band!(
+            #         ax,
+            #         taus[mask],
+            #         zeros(sum(mask)),
+            #         vals[mask],
+            #         color = (palette[1], 0.15),
+            #     )
+            # end
         end
     end
 
     axislegend(ax, position = :rb)
     return fig
 end
-
 function plot_pca_summary(
     dataset::AbstractMatrix{<:Real};
     tau::Union{Nothing,Real} = nothing,
@@ -421,7 +429,7 @@ end
 function plot_lle_dim!(ax::Axis, dataset::AbstractMatrix{<:Real}, k::Int, d::Int, tau::Real)
     set_publication_theme()
 
-    palette = Makie.theme(:Palette, :color)[]
+    palette = Makie.theme(:Palette).color[]
     lle_data = run_lle_per_time(dataset; k = k, d = d)
     embedding = lle_data.lle_results[tau]
 
@@ -454,7 +462,7 @@ end
 function plot_simulation_lle(dataset::AbstractMatrix{<:Real}, k::Int, d::Int, tau_zakres)
     set_publication_theme()
 
-    palette = Makie.theme(:Palette, :color)[]
+    palette = Makie.theme(:Palette).color.[]
     liczba_wykresow = length(tau_zakres)
     kolumny = 2
     wiersze = ceil(Int, liczba_wykresow / kolumny)
@@ -485,7 +493,7 @@ function animate_pca_evolution(
 )
     set_publication_theme()
 
-    palette = Makie.theme(:Palette, :color)[]
+    palette = Makie.theme(:Palette).color[]
     taus = sort(unique(dataset[:, 1]))
 
     fig = Figure(size = (800, 600))
