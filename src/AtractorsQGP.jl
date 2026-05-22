@@ -32,7 +32,7 @@ include("analysis/lle.jl")
 include("analysis/pca.jl")
 include("analysis/dimension.jl")
 include("analysis/plots.jl")
-export animate_pca_evolution
+export animate_pca_evolution, plot_pca_bar_variance
 include("analysis/fit_polynomials.jl")
 export compute_polynomial_lle
 include("io/data_io.jl")

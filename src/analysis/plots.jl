@@ -1,20 +1,31 @@
-
 using ColorSchemes
-using GLMakie 
+using GLMakie
 using LaTeXStrings
+# import Colors
 
 
-function set_publication_theme()
-    scientific_palette = Makie.resample_cmap(:haline, 10) 
+"""
+    set_publication_theme(; cmap = :devon, n_colors = 10, bg_color = RGBf(0.96, 0.96, 0.96))
 
-    set_theme!(
+`cmap` - np. :davos, :lajolla, :devon, :haline, :phase
+
+"""
+function set_publication_theme(;
+        cmap = :devon,         # :davos, :lajolla, :devon, :haline, :phase  
+        n_colors = 10,         #
+        bg_color = RGBf(0.96, 0.96, 0.96)
+    )
+
+    scientific_palette = Makie.resample_cmap(cmap, n_colors)
+
+    return set_theme!(
         Theme(
-            font = "Libertinus Serif", 
-            fontsize = 24, 
+            font = "Libertinus Serif",
+            fontsize = 24,
             figure_padding = 20,
 
             Axis = (
-                backgroundcolor = :white,
+                backgroundcolor = bg_color,
                 titlesize = 28,
                 xlabelsize = 26,
                 ylabelsize = 26,
@@ -23,8 +34,8 @@ function set_publication_theme()
 
                 xgridstyle = :dash,
                 ygridstyle = :dash,
-                xgridcolor = RGBAf(0.85, 0.85, 0.85, 0.6),
-                ygridcolor = RGBAf(0.85, 0.85, 0.85, 0.6),
+                xgridcolor = RGBAf(0.8, 0.8, 0.8, 0.7),
+                ygridcolor = RGBAf(0.8, 0.8, 0.8, 0.7),
 
                 spinewidth = 1.5,
                 bottomspinecolor = :black,
@@ -34,7 +45,7 @@ function set_publication_theme()
                 topspinevisible = true,
                 rightspinevisible = true,
 
-               xtickalign = 1.0,
+                xtickalign = 1.0,
                 ytickalign = 1.0,
                 xticksize = 12,
                 yticksize = 12,
@@ -42,7 +53,7 @@ function set_publication_theme()
                 ytickwidth = 1.5,
                 xtickcolor = :black,
                 ytickcolor = :black,
-                
+
                 xminorticksvisible = true,
                 yminorticksvisible = true,
                 xminortickalign = 1.0,
@@ -52,12 +63,12 @@ function set_publication_theme()
                 xminortickwidth = 1.0,
                 yminortickwidth = 1.0,
             ),
-            
+
             Legend = (
                 framevisible = true,
                 framewidth = 1.2,
                 framecolor = :black,
-                backgroundcolor = RGBAf(1.0, 1.0, 1.0, 0.90), 
+                backgroundcolor = RGBAf(1.0, 1.0, 1.0, 0.9),
                 position = :rt,
                 titlesize = 22,
                 labelsize = 20,
@@ -65,27 +76,50 @@ function set_publication_theme()
             ),
 
             Lines = (
-                linewidth = 2.5, 
+                linewidth = 2.5,
             ),
             Scatter = (
                 markersize = 10,
-                strokewidth = 0.5, 
+                strokewidth = 0.5,
                 strokecolor = :black,
             ),
 
-            Palette = ( 
+            Palette = (
                 color = scientific_palette,
-                patchcolor = scientific_palette, 
+                patchcolor = scientific_palette,
             ),
         )
     )
 end
-#
+
 const PLOT_KEYS = Dict(
-    :T => (L"T\,[\mathrm{fm}^{-1}]", x -> x[2]),
-    :A => (L"\mathcal{A}", x -> x[3]),
-    :tauT => (L"\tau T", x -> x[1] * x[2]),
-    :tau2A => (L"\tau^2 \mathcal{A}", x -> x[1]^2 * x[3]),
+    :T        => (L"T\,[\mathrm{fm}^{-1}]", (x, _) -> x[2]),
+    :A        => (L"\mathcal{A}", (x, _) -> x[3]),
+    :tauT     => (L"\tau T", (x, _) -> x[1] * x[2]),
+    :Tdot     => (L"\dot{T}\,[\mathrm{fm}^{-2}]", (x, _) -> (x[2] / x[1]) * (-1/3 + x[3] / 18)),
+    :tau2Tdot => (L"\tau^2 \dot{T}", (x, _) -> x[1]^2 * ((x[2] / x[1]) * (-1/3 + x[3] / 18))),
+    # testowanie normalizowanie  
+    :T_norm => (
+        L"T / T_{\mathrm{max}}", 
+        (x, slice) -> x[2] / maximum(slice[:, 2])
+    ),
+    
+    # lambda funkcje kongo lekkie
+    # Tdot / Tdot_max dla danej chwili czasu
+    :Tdot_norm => (
+        L"\dot{T} / \dot{T}_{\mathrm{max}}", 
+        (x, slice) -> begin
+            Tdot_all = (slice[:, 2] ./ slice[:, 1]) .* (-1/3 .+ slice[:, 3] ./ 18)
+            
+            Tdot_current = (x[2] / x[1]) * (-1/3 + x[3] / 18)
+            
+            return Tdot_current / maximum(Tdot_all)
+        end
+    ),
+    # pod konkretne publikacje tutaj 2020 Hydrodynamics in Phase Space 0.22 to mój czas 
+    # inizjalitacji τ₀ 
+    :tauT_heller => (L"\tau_0 T", (x,_) -> 0.22 * x[2]),
+    :tau2Tdot_heller => (L"\tau_0^2 \dot{T}", (x,_) -> 0.22^2 * ((x[2] / x[1]) * (-1/3 + x[3] / 18)))
 )
 
 function resolve_def(def)
@@ -103,19 +137,19 @@ end
 
 function get_data(dataset::AbstractMatrix{<:Real}, t::Real, xdef, ydef)
     @assert size(dataset, 2) == 3 "Dataset must have columns [tau, T, A]."
-
     xlbl, xfn = resolve_def(xdef)
     ylbl, yfn = resolve_def(ydef)
 
-    rows = findall(isapprox.(dataset[:, 1], t; atol = 1e-8))
+    rows = findall(isapprox.(dataset[:, 1], t; atol = 1.0e-8))
     if isempty(rows)
         nearest = argmin(abs.(dataset[:, 1] .- t))
-        rows = findall(isapprox.(dataset[:, 1], dataset[nearest, 1]; atol = 1e-8))
+        rows = findall(isapprox.(dataset[:, 1], dataset[nearest, 1]; atol = 1.0e-8))
     end
 
     selected = dataset[rows, :]
-    x = [xfn(selected[i, :]) for i = 1:size(selected, 1)]
-    y = [yfn(selected[i, :]) for i = 1:size(selected, 1)]
+    
+    x = [xfn(selected[i, :], selected) for i in 1:size(selected, 1)]
+    y = [yfn(selected[i, :], selected) for i in 1:size(selected, 1)]
 
     return (x = x, y = y, xlabel = xlbl, ylabel = ylbl)
 end
@@ -127,7 +161,7 @@ function _split_trajectories(dataset::AbstractMatrix{<:Real})
     end
 
     starts = Int[1]
-    for i = 2:size(dataset, 1)
+    for i in 2:size(dataset, 1)
         if dataset[i, 1] <= dataset[i - 1, 1]
             push!(starts, i)
         end
@@ -143,8 +177,8 @@ function _split_trajectories(dataset::AbstractMatrix{<:Real})
 end
 
 function plot_phase_space_grid(dataset::AbstractMatrix{<:Real}, times, xdef, ydef)
-    set_publication_theme()
-    
+    set_publication_theme(cmap = :haline)
+
     palette = Makie.theme(:Palette).color[]
     n = length(times)
     ncols = min(3, n)
@@ -162,8 +196,7 @@ function plot_phase_space_grid(dataset::AbstractMatrix{<:Real}, times, xdef, yde
             xlabel = d.xlabel,
             ylabel = d.ylabel,
         )
-        
-        scatter!(ax, d.x, d.y; markersize = 3.0, color = (palette[2], 0.80))
+        scatter!(ax, d.x, d.y; markersize = 3.0, color = palette[3], strokecolor = :black, strokewidth = 0.5)
     end
     return fig
 end
@@ -186,7 +219,7 @@ function plot_thermodynamics_evolution(dataset::AbstractMatrix{<:Real})
             ax1,
             dataset[tr, 1],
             dataset[tr, 2],
-            color = (palette[1], 0.20),
+            color = (palette[1], 0.2),
             linewidth = 1.5,
         )
     end
@@ -203,7 +236,7 @@ function plot_thermodynamics_evolution(dataset::AbstractMatrix{<:Real})
             ax2,
             dataset[tr, 1],
             dataset[tr, 3],
-            color = (palette[1], 0.20),
+            color = (palette[1], 0.2),
             linewidth = 1.5,
         )
     end
@@ -211,7 +244,7 @@ function plot_thermodynamics_evolution(dataset::AbstractMatrix{<:Real})
     hlines!(
         ax2,
         [0.0],
-        color = palette[2], 
+        color = palette[2],
         linestyle = :dash,
         linewidth = 2.0,
         label = L"\mathcal{A}=0\;(\text{Anizotropia} = 0)",
@@ -223,16 +256,16 @@ function plot_thermodynamics_evolution(dataset::AbstractMatrix{<:Real})
 end
 
 function plot_pca_evr_over_time(
-    dataset::AbstractMatrix{<:Real};
-    n_components::Int = 2,
-    method::Symbol = :minmax,
-    gamma::Float64 = 1.0,
-    feature_cols::AbstractVector{<:Integer} = collect(2:size(dataset, 2)),
-    plot_title::Union{String, LaTeXString} = L"\text{Explained Variance Ratio (EVR) w funkcji czasu}",
-    x_label::Union{String, LaTeXString} = L"\tau\,[\mathrm{fm}/c]",
-    y_label::Union{String, LaTeXString} = L"\text{EVR}",
-    tau_min::Union{Real, Nothing} = nothing 
-)
+        dataset::AbstractMatrix{<:Real};
+        n_components::Int = 2,
+        method::Symbol = :minmax,
+        gamma::Float64 = 1.0,
+        feature_cols::AbstractVector{<:Integer} = collect(2:size(dataset, 2)),
+        plot_title::Union{String, LaTeXString} = L"\text{Explained Variance Ratio (EVR) w funkcji czasu}",
+        x_label::Union{String, LaTeXString} = L"\tau\,[\mathrm{fm}/c]",
+        y_label::Union{String, LaTeXString} = L"\text{EVR}",
+        tau_min::Union{Real, Nothing} = nothing
+    )
     set_publication_theme()
 
     result = run_pca_per_time(
@@ -253,14 +286,15 @@ function plot_pca_evr_over_time(
         title = plot_title,
         xlabel = x_label,
         ylabel = y_label,
+
         limits = (t_min, maximum(taus), 0, 1.05),
     )
 
     hlines!(ax, [1.0], color = :gray45, linestyle = :dash, label = L"100\%")
 
     palette = Makie.theme(:Palette).color[]
-    
-    for comp = 1:n_components
+
+    for comp in 1:n_components
         vals = evr[:, comp]
         mask = .!isnan.(vals)
         if any(mask)
@@ -287,18 +321,78 @@ function plot_pca_evr_over_time(
     axislegend(ax, position = :rb)
     return fig
 end
+
+function plot_pca_bar_variance(
+        dataset::AbstractMatrix{<:Real};
+        tau::Real = 1.14,
+        method::Symbol = :minmax,
+        gamma::Float64 = 1.0
+    )
+    set_publication_theme()
+    palette = Makie.theme(:Palette).color[]
+
+    Xtau = if size(dataset, 2) == 3
+        _, sliced = get_tau_slice(dataset, tau; atol = 1.0e-8, feature_cols = [2, 3])
+        sliced
+    else
+        Matrix{Float64}(dataset)
+    end
+
+    pca_result = if method === :minmax
+        run_pca(Xtau; n_components = 2)
+    elseif method === :kernel
+        run_pca_kernel(Xtau; n_components = 2, gamma = gamma)
+    else
+        error("Nieznana metoda PCA. Wybierz :minmax lub :kernel.")
+    end
+
+    evr = pca_result.explained_variance_ratio_full
+    n_comp = length(evr)
+    cumulative_evr = cumsum(evr)
+
+    fig = Figure(size = (850, 550))
+    ax = Axis(
+        fig[1, 1],
+        title = L"\text{Analiza Wariancji — — PCA z normalizacją min-max}",
+        xlabel = L"\text{Główna Składowa}",
+        ylabel = L"\text{EVR [\%]}",
+        xticks = (1:n_comp, [L"\mathrm{PC}_%$(i)" for i in 1:n_comp]),
+        limits = (0.4, n_comp + 0.6, 0, 110)
+    )
+
+    evr_percent = evr .* 100
+    barplot!(ax, 1:n_comp, evr_percent, color = palette[1], width = 0.5)
+
+    for i in 1:n_comp
+        text!(
+            ax,
+            i,
+            evr_percent[i] + 3,
+            text = string(round(evr_percent[i], digits = 1), "%"),
+            align = (:center, :bottom),
+            fontsize = 18,
+            font = "Libertinus Serif"
+        )
+    end
+
+    cum_percent = cumulative_evr .* 100
+    lines!(ax, 1:n_comp, cum_percent, color = :gray35, linestyle = :dash, linewidth = 2.5)
+    scatter!(ax, 1:n_comp, cum_percent, color = palette[2], markersize = 12, label = L"\text{Skumulowane EVR}")
+
+    axislegend(ax, position = :rc)
+
+    return fig
+end
+
 function plot_pca_summary(
-    dataset::AbstractMatrix{<:Real};
-    tau::Union{Nothing,Real} = nothing,
-    tau_tol::Float64 = 1e-8,
-    tau_mode::Symbol = :nearest,
-    n_components::Int = 2,
-    method::Symbol = :minmax,
-    gamma::Float64 = 1.0,
-)
-    @assert size(dataset, 2) >= 3 "Dataset must contain at least [tau, T, A]."
-    @assert tau_tol >= 0 "tau_tol must be >= 0."
-    @assert tau_mode in (:strict, :nearest) "tau_mode must be :strict or :nearest."
+        dataset::AbstractMatrix{<:Real};
+        tau::Union{Nothing, Real} = nothing,
+        tau_tol::Float64 = 1.0e-8,
+        tau_mode::Symbol = :nearest,
+        n_components::Int = 2,
+        method::Symbol = :minmax,
+        gamma::Float64 = 1.0,
+    )
 
     set_publication_theme()
 
@@ -397,7 +491,7 @@ function plot_lle_dim(dataset::AbstractMatrix{<:Real}, k::Int, d::Int, tau::Real
 
     fig = Figure(size = (600, 500))
     ax = Axis(
-        fig[1, 1], 
+        fig[1, 1],
         title = L"\text{LLE: } k=%$k, d=%$d, \tau=%$tau"
     )
 
@@ -462,7 +556,7 @@ end
 function plot_simulation_lle(dataset::AbstractMatrix{<:Real}, k::Int, d::Int, tau_zakres)
     set_publication_theme()
 
-    palette = Makie.theme(:Palette).color.[]
+    palette = Makie.theme(:Palette).color[]
     liczba_wykresow = length(tau_zakres)
     kolumny = 2
     wiersze = ceil(Int, liczba_wykresow / kolumny)
@@ -483,14 +577,14 @@ function plot_simulation_lle(dataset::AbstractMatrix{<:Real}, k::Int, d::Int, ta
 end
 
 function animate_pca_evolution(
-    dataset::AbstractMatrix{<:Real};
-    filename::String = "pca_evolution.gif",
-    fps::Int = 15,
-    n_components::Int = 2,
-    method::Symbol = :minmax,
-    gamma::Float64 = 1.0,
-    tau_tol::Float64 = 1e-8
-)
+        dataset::AbstractMatrix{<:Real};
+        filename::String = "pca_evolution.gif",
+        fps::Int = 15,
+        n_components::Int = 2,
+        method::Symbol = :minmax,
+        gamma::Float64 = 1.0,
+        tau_tol::Float64 = 1.0e-8
+    )
     set_publication_theme()
 
     palette = Makie.theme(:Palette).color[]
@@ -516,7 +610,7 @@ function animate_pca_evolution(
     )
 
     record(fig, filename, taus; framerate = fps) do t
-        val = round(t, digits=3)
+        val = round(t, digits = 3)
         title_obs[] = L"\text{Projekcja PCA } (\tau = %$(val))"
 
         d = abs.(dataset[:, 1] .- t)
@@ -542,7 +636,7 @@ function animate_pca_evolution(
                 pts_obs[] = [Point2f(transformed[i, 1], 0.0) for i in 1:size(transformed, 1)]
             end
 
-            autolimits!(ax)
+            reset_limits!(ax)
         end
     end
 
