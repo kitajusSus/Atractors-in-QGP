@@ -13,7 +13,7 @@ using LaTeXStrings
 function set_publication_theme(;
         cmap = :devon,         # :davos, :lajolla, :devon, :haline, :phase  
         n_colors = 10,         #
-        bg_color = RGBf(0.96, 0.96, 0.96)
+        bg_color = RGBf(0.98, 0.98, 0.98)
     )
 
     scientific_palette = Makie.resample_cmap(cmap, n_colors)
