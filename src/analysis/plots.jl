@@ -642,3 +642,64 @@ function animate_pca_evolution(
 
     return filename
 end
+###########################
+### FUNKCJE DO LLE
+###############################
+
+function plot_lle_embedding(embedding::AbstractMatrix{<:Real}; labels = nothing, title = L"\text{Projekcja LLE}", osie = nothing)
+    set_publication_theme()
+    palette = Makie.theme(:Palette).color[]
+    dim = size(embedding, 2)
+    
+    fig = Figure(size = (750, 600))
+    
+    color_param = isnothing(labels) ? (palette[1], 0.75) : labels
+    cmap_param = isnothing(labels) ? :viridis : :jet
+    
+    if dim >= 3
+        ax = Axis3(fig[1, 1], title = title) 
+                   #xlabel = L"\text{LLE1}", ylabel = L"\text{LLE2}", zlabel = L"\text{LLE3}")
+        scatter!(ax, embedding[:, 1], embedding[:, 2], embedding[:, 3], color = color_param, colormap = cmap_param, markersize = 6)
+    elseif dim == 2
+        ax = Axis(fig[1, 1], title = title, xlabel = L"\text{LLE1}", ylabel = L"\text{LLE2}")
+        scatter!(ax, embedding[:, 1], embedding[:, 2], color = color_param, colormap = cmap_param, markersize = 6)
+    else
+        ax = Axis(fig[1, 1], title = title, xlabel = L"\text{LLE1}")
+        scatter!(ax, embedding[:, 1], zeros(size(embedding, 1)), color = color_param, colormap = cmap_param, markersize = 6)
+    end
+
+    return fig
+end
+
+function plot_lle_grid(lle_results::Dict, taus; labels = nothing)
+    set_publication_theme()
+    palette = Makie.theme(:Palette).color[]
+    
+    n = length(taus)
+    ncols = min(3, n)
+    nrows = ceil(Int, n / ncols)
+    fig = Figure(size = (400 * ncols, 380 * nrows))
+    
+    color_param = isnothing(labels) ? (palette[1], 0.75) : labels
+    cmap_param = isnothing(labels) ? :viridis : :jet
+
+    for (i, t) in enumerate(taus)
+        row = (i - 1) ÷ ncols + 1
+        col = (i - 1) % ncols + 1
+        embedding = lle_results[t]
+        dim = size(embedding, 2)
+        
+        if dim >= 3
+            ax = Axis3(fig[row, col], title = L"\tau = %$(round(t, digits=2))", xlabel = L"\text{LLE1}", ylabel = L"\text{LLE2}", zlabel = L"\text{LLE3}")
+            scatter!(ax, embedding[:, 1], embedding[:, 2], embedding[:, 3], color = color_param, colormap = cmap_param, markersize = 5)
+        elseif dim == 2
+            ax = Axis(fig[row, col], title = L"\tau = %$(round(t, digits=2))", xlabel = L"\text{LLE1}", ylabel = L"\text{LLE2}")
+            scatter!(ax, embedding[:, 1], embedding[:, 2], color = color_param, colormap = cmap_param, markersize = 5)
+        else
+            ax = Axis(fig[row, col], title = L"\tau = %$(round(t, digits=2))", xlabel = L"\text{LLE1}")
+            scatter!(ax, embedding[:, 1], zeros(size(embedding, 1)), color = color_param, colormap = cmap_param, markersize = 5)
+        end
+    end
+
+    return fig
+end
