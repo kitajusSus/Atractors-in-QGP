@@ -255,6 +255,91 @@ function plot_thermodynamics_evolution(dataset::AbstractMatrix{<:Real})
     return fig
 end
 
+
+
+function plot_phase_space_evolution(dataset::AbstractMatrix{<:Real})
+    set_publication_theme()
+    palette = Makie.theme(:Palette).color[]
+    trajs = _split_trajectories(dataset)
+    trajektorie = trajs[1:10:end] 
+    fig = Figure(size = (950, 620))
+    ax = Axis(
+        fig[1, 1],
+        title = L"\text{Ewolucja w przestrzeni fazowej } (T, \mathcal{A})\; \text{w czasie własnym } \tau",
+        xlabel = L"T\,[\mathrm{fm}^{-1}]",
+        ylabel = L"\mathcal{A}",
+    )
+    for (i, tr) in enumerate(trajektorie)
+        col = palette[mod1(i, length(palette))]
+        lines!(
+            ax,
+            dataset[tr, 2],
+            dataset[tr, 3],
+            color = (col, 0.75),
+            linewidth = 1.5,
+        )
+    end
+    hlines!(
+        ax,
+        [0.0],
+        color = :black,
+        linestyle = :dash,
+        linewidth = 2.0,
+        label = L"\mathcal{A}=0\;(\text{Anizotropia} = 0)",
+    )
+    axislegend(ax, position = :rt)
+    return fig
+end
+
+function plot_phase_space_evolution_3d(dataset::AbstractMatrix{<:Real})
+    set_publication_theme()
+    palette = Makie.theme(:Palette).color[]
+    trajs = _split_trajectories(dataset)
+    trajektorie = trajs[1:10:end] 
+    fig = Figure(size = (950, 750))
+    ax = Axis3(
+        fig[1, 1],
+        title = L"\text{Ewolucja w przestrzeni fazowej } (T, \mathcal{A}, \tau)",
+        xlabel = L"T\,[\mathrm{fm}^{-1}]",
+        ylabel = L"\mathcal{A}",
+        zlabel = L"\tau\,[\mathrm{fm}]",
+        azimuth = 1.3π,
+        elevation = 0.15π,
+    )
+    for (i, tr) in enumerate(trajektorie)
+        col = palette[mod1(i, length(palette))]
+        lines!(
+            ax,
+            dataset[tr, 2], 
+            dataset[tr, 3],  
+            dataset[tr, 1],   
+            color = (col, 0.7),
+            linewidth = 1.5,
+        )
+    end
+    T_range = range(
+        minimum(dataset[:, 2]),
+        maximum(dataset[:, 2]),
+        length = 2,
+    )
+    τ_range = range(
+        minimum(dataset[:, 1]),
+        maximum(dataset[:, 1]),
+        length = 2,
+    )
+    surface!(
+        ax,
+        T_range,
+        zeros(2, 2),         # A=0
+        repeat(τ_range, 1, 2)',
+        color = fill((:gray, 0.15), 2, 2),
+        transparency = true,
+    )
+    return fig
+end
+
+
+
 function plot_pca_evr_over_time(
         dataset::AbstractMatrix{<:Real};
         n_components::Int = 2,
