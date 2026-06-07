@@ -3,9 +3,9 @@ include("../ncbj_lle.jl")
 using GLMakie
 include("swissroll.jl")
 
-function ex_eigen_value(; N=2000, K=40, indeksy = 2:10)
+function ex_eigen_value(; N = 2000, K = 40, indeksy = 2:10)
     X, labels = swissroll_dane(N)
-    
+
     W = ncbj4_lle_basic(X, K)
 
     M = (I - W)' * (I - W)
@@ -20,7 +20,6 @@ function ex_eigen_value(; N=2000, K=40, indeksy = 2:10)
     # return W, F.values, wartosci_do_wykresu, wartosci_wlasne
 
 end
-
 
 
 ex_eigen_value()

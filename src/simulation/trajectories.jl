@@ -2,15 +2,15 @@ using DifferentialEquations
 using ProgressMeter
 
 function generate_trajectories(
-    model::AbstractHydroModel,
-    initial_conditions::AbstractVector{<:AbstractVector{<:Real}},
-    tspan::Tuple{<:Real,<:Real};
-    saveat=nothing,
-    parallel::Symbol=:serial,
-)
+        model::AbstractHydroModel,
+        initial_conditions::AbstractVector{<:AbstractVector{<:Real}},
+        tspan::Tuple{<:Real, <:Real};
+        saveat = nothing,
+        parallel::Symbol = :serial,
+    )
     @assert !isempty(initial_conditions) "At least one initial condition is required."
 
-    first_solution = solve_hydro(model, initial_conditions[1], tspan; saveat=saveat)
+    first_solution = solve_hydro(model, initial_conditions[1], tspan; saveat = saveat)
     solType = typeof(first_solution)
     solutions = Vector{solType}(undef, length(initial_conditions))
     solutions[1] = first_solution
@@ -32,7 +32,7 @@ function generate_trajectories(
         else
             arg2
         end
-        remake(prob, u0=initial_conditions[i])
+        return remake(prob, u0 = initial_conditions[i])
     end
 
     pasek = Progress(length(initial_conditions), 1, "Obliczanie trajektorii: ")
@@ -42,19 +42,19 @@ function generate_trajectories(
         return (sol, false)
     end
 
-    ensemble_problem = EnsembleProblem(base_problem; prob_func=prob_func, output_func=output_func)
+    ensemble_problem = EnsembleProblem(base_problem; prob_func = prob_func, output_func = output_func)
     ensemble_alg = parallel === :threads ? EnsembleThreads() : EnsembleSerial()
 
     solve_kwargs = (
-        trajectories=length(initial_conditions),
-        abstol=1e-8,
-        reltol=1e-8,
+        trajectories = length(initial_conditions),
+        abstol = 1.0e-8,
+        reltol = 1.0e-8,
     )
 
     ensemble_solution = if isnothing(saveat)
         solve(ensemble_problem, Rodas5(), ensemble_alg; solve_kwargs...)
     else
-        solve(ensemble_problem, Rodas5(), ensemble_alg; solve_kwargs..., saveat=saveat)
+        solve(ensemble_problem, Rodas5(), ensemble_alg; solve_kwargs..., saveat = saveat)
     end
 
     @inbounds for i in eachindex(solutions)
@@ -64,17 +64,17 @@ function generate_trajectories(
     return solutions
 end
 
-function build_dataset(solutions::AbstractVector; temperature_unit::Symbol=:fm)
+function build_dataset(solutions::AbstractVector; temperature_unit::Symbol = :fm)
     n_rows = sum(length(sol.t) for sol in solutions)
     data = Matrix{Float64}(undef, n_rows, 3)
     hbarc = 197.3269804
-    
+
     row_idx = 1
     @inbounds for sol in solutions
         for i in eachindex(sol.t)
             tau = sol.t[i]
-            T   = sol.u[i][1]
-            A   = sol.u[i][2]
+            T = sol.u[i][1]
+            A = sol.u[i][2]
 
             if temperature_unit === :MeV
                 T = T * hbarc
@@ -83,10 +83,10 @@ function build_dataset(solutions::AbstractVector; temperature_unit::Symbol=:fm)
             data[row_idx, 1] = tau
             data[row_idx, 2] = T
             data[row_idx, 3] = A
-            
+
             row_idx += 1
         end
     end
-    
+
     return data
 end

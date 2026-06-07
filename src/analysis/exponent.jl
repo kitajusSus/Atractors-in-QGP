@@ -2,20 +2,20 @@
 Larpunov Exponent
 """
 function run_LLE(
-    model::AbstractHydroModel,
-    u0::AbstractVector{<:Real},
-    tspan::Tuple{<:Real,<:Real};
-    perturbation::Real=1e-6,
-    saveat::Real=1e-3,
-)
+        model::AbstractHydroModel,
+        u0::AbstractVector{<:Real},
+        tspan::Tuple{<:Real, <:Real};
+        perturbation::Real = 1.0e-6,
+        saveat::Real = 1.0e-3,
+    )
     @assert perturbation > 0 "perturbation must be positive."
 
     u1 = collect(float.(u0))
     u2 = copy(u1)
     u2[1] += perturbation
 
-    sol1 = solve_hydro(model, u1, tspan; saveat=saveat)
-    sol2 = solve_hydro(model, u2, tspan; saveat=saveat)
+    sol1 = solve_hydro(model, u1, tspan; saveat = saveat)
+    sol2 = solve_hydro(model, u2, tspan; saveat = saveat)
 
     n = min(length(sol1.t), length(sol2.t))
     if n < 2

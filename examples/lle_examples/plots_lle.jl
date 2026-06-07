@@ -1,4 +1,3 @@
-
 function plot_examples_lle(X, Y, labels)
     fig = Figure(size = (1200, 600))
     sizeX = size(X)
@@ -6,17 +5,15 @@ function plot_examples_lle(X, Y, labels)
     scatter!(ax_3d, X[1, :], X[2, :], X[3, :], color = labels, colormap = :jet, markersize = 8)
     # println(Y)
     ax_2d = Axis3(fig[1, 2], title = "Zredukowana przestrzeń Y $(size(Y))", azimuth = 0.22 * π)
-    scatter!(ax_2d, Y[1, :], Y[2, :], Y[3,:],color = labels, colormap = :jet, markersize = 8)
-    
+    scatter!(ax_2d, Y[1, :], Y[2, :], Y[3, :], color = labels, colormap = :jet, markersize = 8)
+
     return fig
 end
 
 
-
-
 function plot_examples_lle_3d(X, Y, labels)
     fig = Figure(size = (1200, 600))
-    
+
     dim_X = size(X, 1)
     dim_Y = size(Y, 1)
 
@@ -42,11 +39,6 @@ function plot_examples_lle_3d(X, Y, labels)
         ax_Y = Axis(fig[1, 2], title = "Przestrzeń Y (1D)")
         scatter!(ax_Y, Y[1, :], zeros(size(Y, 2)), color = labels, colormap = :jet, markersize = 8)
     end
-    
+
     return fig
 end
-
-
-
-
-

@@ -11,7 +11,7 @@ function basic_lag()
     println("mati ma chyba ?G == 0 oraz Ri == pochodna po lambda == 0 z Mathematiki):")
     println("Po x: ", dL_dx, " = 0")
     println("Po y: ", dL_dy, " = 0")
-    println("Po λ: ", dL_dλ, " = 0")
+    return println("Po λ: ", dL_dλ, " = 0")
 end
 
 
@@ -49,5 +49,5 @@ function lagrang()
     println("∂L/∂w1 = ", dL_dw1)
     println("∂L/∂w2 = ", dL_dw2)
     println("∂L/∂w3 = ", dL_dw3)
-    println("∂L/∂λ  = ", dL_dλ)
+    return println("∂L/∂λ  = ", dL_dλ)
 end

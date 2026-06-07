@@ -5,20 +5,20 @@ using GLMakie
 include("../ncbj_lle.jl")
 include("swissroll.jl")
 
-function lambda_analiza(; X, K=12, indeksy=1:10)
-    
-    
+function lambda_analiza(; X, K = 12, indeksy = 1:10)
+
+
     W = ncbj4_lle_basic(X, K)
     M = (I - W)' * (I - W)
     F = eigen(Symmetric(M))
-    
+
     limit = min(length(F.values), maximum(indeksy))
     idx = indeksy[indeksy .<= limit]
-    
+
     val_j = F.values[idx]
     norm_j = val_j
     norm_j[2:end] = val_j[2:end] ./ val_j[2]
-    
+
     # println("\nAnaliza widma dla K = $K")
     # @printf("%-8s | %-18s | %-18s\n", "Indeks", "Wartość surowa", "Wartość znormalizowana")
     # println(repeat("=", 52))
@@ -26,12 +26,9 @@ function lambda_analiza(; X, K=12, indeksy=1:10)
     # for i in 1:length(idx)
     #     @printf("%-8d | %-18.6e | %-18.4f\n", idx[i], val_j[i], norm_j[i])
     # end
-    
+
     return norm_j
 end
-
-
-
 
 
 #

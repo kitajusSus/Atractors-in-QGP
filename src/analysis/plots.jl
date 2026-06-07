@@ -1,5 +1,6 @@
 using ColorSchemes
 using GLMakie
+import GLMakie: Axis
 using LaTeXStrings
 # import Colors
 
@@ -11,7 +12,7 @@ using LaTeXStrings
 
 """
 function set_publication_theme(;
-        cmap = :devon,         # :davos, :lajolla, :devon, :haline, :phase  
+        cmap = :devon,         # :davos, :lajolla, :devon, :haline, :phase
         n_colors = 10,         #
         bg_color = RGBf(0.98, 0.98, 0.98)
     )
@@ -93,33 +94,33 @@ function set_publication_theme(;
 end
 
 const PLOT_KEYS = Dict(
-    :T        => (L"T\,[\mathrm{fm}^{-1}]", (x, _) -> x[2]),
-    :A        => (L"\mathcal{A}", (x, _) -> x[3]),
-    :tauT     => (L"\tau T", (x, _) -> x[1] * x[2]),
-    :Tdot     => (L"\dot{T}\,[\mathrm{fm}^{-2}]", (x, _) -> (x[2] / x[1]) * (-1/3 + x[3] / 18)),
-    :tau2Tdot => (L"\tau^2 \dot{T}", (x, _) -> x[1]^2 * ((x[2] / x[1]) * (-1/3 + x[3] / 18))),
-    # testowanie normalizowanie  
+    :T => (L"T\,[\mathrm{fm}^{-1}]", (x, _) -> x[2]),
+    :A => (L"\mathcal{A}", (x, _) -> x[3]),
+    :tauT => (L"\tau T", (x, _) -> x[1] * x[2]),
+    :Tdot => (L"\dot{T}\,[\mathrm{fm}^{-2}]", (x, _) -> (x[2] / x[1]) * (-1 / 3 + x[3] / 18)),
+    :tau2Tdot => (L"\tau^2 \dot{T}", (x, _) -> x[1]^2 * ((x[2] / x[1]) * (-1 / 3 + x[3] / 18))),
+    # testowanie normalizowanie
     :T_norm => (
-        L"T / T_{\mathrm{max}}", 
-        (x, slice) -> x[2] / maximum(slice[:, 2])
+        L"T / T_{\mathrm{max}}",
+        (x, slice) -> x[2] / maximum(slice[:, 2]),
     ),
-    
+
     # lambda funkcje kongo lekkie
     # Tdot / Tdot_max dla danej chwili czasu
     :Tdot_norm => (
-        L"\dot{T} / \dot{T}_{\mathrm{max}}", 
+        L"\dot{T} / \dot{T}_{\mathrm{max}}",
         (x, slice) -> begin
-            Tdot_all = (slice[:, 2] ./ slice[:, 1]) .* (-1/3 .+ slice[:, 3] ./ 18)
-            
-            Tdot_current = (x[2] / x[1]) * (-1/3 + x[3] / 18)
-            
+            Tdot_all = (slice[:, 2] ./ slice[:, 1]) .* (-1 / 3 .+ slice[:, 3] ./ 18)
+
+            Tdot_current = (x[2] / x[1]) * (-1 / 3 + x[3] / 18)
+
             return Tdot_current / maximum(Tdot_all)
-        end
+        end,
     ),
-    # pod konkretne publikacje tutaj 2020 Hydrodynamics in Phase Space 0.22 to mój czas 
-    # inizjalitacji τ₀ 
-    :tauT_heller => (L"\tau_0 T", (x,_) -> 0.22 * x[2]),
-    :tau2Tdot_heller => (L"\tau_0^2 \dot{T}", (x,_) -> 0.22^2 * ((x[2] / x[1]) * (-1/3 + x[3] / 18)))
+    # pod konkretne publikacje tutaj 2020 Hydrodynamics in Phase Space 0.22 to mój czas
+    # inizjalitacji τ₀
+    :tauT_heller => (L"\tau_0 T", (x, _) -> 0.22 * x[2]),
+    :tau2Tdot_heller => (L"\tau_0^2 \dot{T}", (x, _) -> 0.22^2 * ((x[2] / x[1]) * (-1 / 3 + x[3] / 18)))
 )
 
 function resolve_def(def)
@@ -147,7 +148,7 @@ function get_data(dataset::AbstractMatrix{<:Real}, t::Real, xdef, ydef)
     end
 
     selected = dataset[rows, :]
-    
+
     x = [xfn(selected[i, :], selected) for i in 1:size(selected, 1)]
     y = [yfn(selected[i, :], selected) for i in 1:size(selected, 1)]
 
@@ -178,12 +179,11 @@ end
 
 function plot_phase_space_grid(dataset::AbstractMatrix{<:Real}, times, xdef, ydef)
     set_publication_theme(cmap = :haline)
-
     palette = Makie.theme(:Palette).color[]
     n = length(times)
     ncols = min(3, n)
     nrows = ceil(Int, n / ncols)
-    fig = Figure(size = (360 * ncols, 290 * nrows))
+    fig = Figure(size = (400 * ncols, 350 * nrows))
 
     for (i, t) in enumerate(times)
         row = (i - 1) ÷ ncols + 1
@@ -195,6 +195,8 @@ function plot_phase_space_grid(dataset::AbstractMatrix{<:Real}, times, xdef, yde
             title = L"\tau = %$(round(t, digits=2))\,\mathrm{fm}/c",
             xlabel = d.xlabel,
             ylabel = d.ylabel,
+
+            limits = (0, maximum(dataset[:, 2]) * 1.05, minimum(dataset[:, 3]) * 1.05, maximum(dataset[:, 3]) * 1.05)
         )
         scatter!(ax, d.x, d.y; markersize = 3.0, color = palette[3], strokecolor = :black, strokewidth = 0.5)
     end
@@ -206,7 +208,8 @@ function plot_thermodynamics_evolution(dataset::AbstractMatrix{<:Real})
 
     palette = Makie.theme(:Palette).color[]
     trajs = _split_trajectories(dataset)
-    fig = Figure(size = (950, 620))
+    trajektorie = trajs[1:10:end]
+    fig = Figure(size = (1200, 700))
     ax1 = Axis(
         fig[1, 1],
         title = L"\text{Ewolucja Temperatury } T\,[\mathrm{fm}^{-1}]\; \text{w czasie własnym } \tau",
@@ -214,12 +217,12 @@ function plot_thermodynamics_evolution(dataset::AbstractMatrix{<:Real})
         ylabel = L"T\,[\mathrm{fm}^{-1}]",
     )
 
-    for tr in trajs
+    for tr in trajektorie
         lines!(
             ax1,
             dataset[tr, 1],
             dataset[tr, 2],
-            color = (palette[1], 0.2),
+            color = (palette[3], 0.2),
             linewidth = 1.5,
         )
     end
@@ -231,12 +234,12 @@ function plot_thermodynamics_evolution(dataset::AbstractMatrix{<:Real})
         ylabel = L"\mathcal{A}",
     )
 
-    for tr in trajs
+    for tr in trajektorie
         lines!(
             ax2,
             dataset[tr, 1],
             dataset[tr, 3],
-            color = (palette[1], 0.2),
+            color = (palette[2], 0.2),
             linewidth = 1.5,
         )
     end
@@ -244,7 +247,7 @@ function plot_thermodynamics_evolution(dataset::AbstractMatrix{<:Real})
     hlines!(
         ax2,
         [0.0],
-        color = palette[2],
+        color = :red,
         linestyle = :dash,
         linewidth = 2.0,
         label = L"\mathcal{A}=0\;(\text{Anizotropia} = 0)",
@@ -256,17 +259,17 @@ function plot_thermodynamics_evolution(dataset::AbstractMatrix{<:Real})
 end
 
 
-
 function plot_phase_space_evolution(dataset::AbstractMatrix{<:Real})
     set_publication_theme()
     palette = Makie.theme(:Palette).color[]
     trajs = _split_trajectories(dataset)
-    trajektorie = trajs[1:10:end] 
+    trajektorie = trajs[1:10:end]
     fig = Figure(size = (950, 620))
     ax = Axis(
         fig[1, 1],
         title = L"\text{Ewolucja w przestrzeni fazowej } (T, \mathcal{A})\; \text{w czasie własnym } \tau",
         xlabel = L"T\,[\mathrm{fm}^{-1}]",
+
         ylabel = L"\mathcal{A}",
     )
     for (i, tr) in enumerate(trajektorie)
@@ -295,7 +298,7 @@ function plot_phase_space_evolution_3d(dataset::AbstractMatrix{<:Real})
     set_publication_theme()
     palette = Makie.theme(:Palette).color[]
     trajs = _split_trajectories(dataset)
-    trajektorie = trajs[1:10:end] 
+    trajektorie = trajs[1:10:end]
     fig = Figure(size = (950, 750))
     ax = Axis3(
         fig[1, 1],
@@ -310,9 +313,9 @@ function plot_phase_space_evolution_3d(dataset::AbstractMatrix{<:Real})
         col = palette[mod1(i, length(palette))]
         lines!(
             ax,
-            dataset[tr, 2], 
-            dataset[tr, 3],  
-            dataset[tr, 1],   
+            dataset[tr, 2],
+            dataset[tr, 3],
+            dataset[tr, 1],
             color = (col, 0.7),
             linewidth = 1.5,
         )
@@ -337,7 +340,6 @@ function plot_phase_space_evolution_3d(dataset::AbstractMatrix{<:Real})
     )
     return fig
 end
-
 
 
 function plot_pca_evr_over_time(
@@ -735,15 +737,15 @@ function plot_lle_embedding(embedding::AbstractMatrix{<:Real}; labels = nothing,
     set_publication_theme()
     palette = Makie.theme(:Palette).color[]
     dim = size(embedding, 2)
-    
+
     fig = Figure(size = (750, 600))
-    
+
     color_param = isnothing(labels) ? (palette[1], 0.75) : labels
     cmap_param = isnothing(labels) ? :viridis : :jet
-    
+
     if dim >= 3
-        ax = Axis3(fig[1, 1], title = title) 
-                   #xlabel = L"\text{LLE1}", ylabel = L"\text{LLE2}", zlabel = L"\text{LLE3}")
+        ax = Axis3(fig[1, 1], title = title)
+        #xlabel = L"\text{LLE1}", ylabel = L"\text{LLE2}", zlabel = L"\text{LLE3}")
         scatter!(ax, embedding[:, 1], embedding[:, 2], embedding[:, 3], color = color_param, colormap = cmap_param, markersize = 6)
     elseif dim == 2
         ax = Axis(fig[1, 1], title = title, xlabel = L"\text{LLE1}", ylabel = L"\text{LLE2}")
@@ -759,12 +761,12 @@ end
 function plot_lle_grid(lle_results::Dict, taus; labels = nothing)
     set_publication_theme()
     palette = Makie.theme(:Palette).color[]
-    
+
     n = length(taus)
     ncols = min(3, n)
     nrows = ceil(Int, n / ncols)
     fig = Figure(size = (400 * ncols, 380 * nrows))
-    
+
     color_param = isnothing(labels) ? (palette[1], 0.75) : labels
     cmap_param = isnothing(labels) ? :viridis : :jet
 
@@ -773,7 +775,7 @@ function plot_lle_grid(lle_results::Dict, taus; labels = nothing)
         col = (i - 1) % ncols + 1
         embedding = lle_results[t]
         dim = size(embedding, 2)
-        
+
         if dim >= 3
             ax = Axis3(fig[row, col], title = L"\tau = %$(round(t, digits=2))", xlabel = L"\text{LLE1}", ylabel = L"\text{LLE2}", zlabel = L"\text{LLE3}")
             scatter!(ax, embedding[:, 1], embedding[:, 2], embedding[:, 3], color = color_param, colormap = cmap_param, markersize = 5)

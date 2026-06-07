@@ -4,18 +4,12 @@ using HDF5
 using Serialization
 
 
-
-
-
-
-
-
 """
 Save dataset matrix [tau, T, A] to CSV.
 """
 function save_dataset_csv(path::AbstractString, data::AbstractMatrix{<:Real})
     @assert size(data, 2) == 3 "Dataset must have columns [tau, T, A]."
-    df = DataFrame(tau=data[:, 1], T=data[:, 2], A=data[:, 3])
+    df = DataFrame(tau = data[:, 1], T = data[:, 2], A = data[:, 3])
     CSV.write(path, df)
     return path
 end
@@ -55,7 +49,7 @@ end
 Load dataset matrix [tau, T, A] from HDF5.
 """
 function load_dataset_h5(path::AbstractString)
-    h5open(path, "r") do f
+    return h5open(path, "r") do f
         @assert haskey(f, "dataset") "HDF5 file must contain /dataset"
         data = read(f["dataset"])
         @assert size(data, 2) == 3 "Dataset must have columns [tau, T, A]."
@@ -78,7 +72,7 @@ end
 Load dataset from native Julia serialization (.jls).
 """
 function load_dataset_jls(path::AbstractString)
-    open(path, "r") do io
+    return open(path, "r") do io
         data = deserialize(io)
         @assert data isa AbstractMatrix "Serialized object must be a matrix."
         @assert size(data, 2) == 3 "Dataset must have columns [tau, T, A]."
@@ -117,5 +111,3 @@ function load_dataset(path::AbstractString)
         error("Unsupported format. Use .csv, .h5/.hdf5, or .jls")
     end
 end
-
-

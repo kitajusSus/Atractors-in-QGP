@@ -1,7 +1,6 @@
-
-using GLMakie 
+using GLMakie
 using LinearAlgebra
-const dx = 1e-3
+const dx = 1.0e-3
 
 """@docs
     ncbj1_macierz_wszyskich_punktów(x::Vector{Float32})
@@ -21,12 +20,10 @@ function ncbj1_macierz_wszyskich_punktów!(x::Vector{Number})
 end
 ```
 """
-function ncbj1_macierz_wszystkich_punktow(x::AbstractVector{T}) where {T<:Number}
+function ncbj1_macierz_wszystkich_punktow(x::AbstractVector{T}) where {T <: Number}
     y = 1 ./ x
     return hcat(x, y)'
 end
-
-
 
 
 """
@@ -41,24 +38,24 @@ return - 𝛈 - macierz sąsiadów dla punktu i
 indeksy_𝛈 - indeksy sąsiadów w macierzy punktów
 x_i - punkt dla którego szukamy sąsiadów
 """
-function ncbj2_sasiedzi(macierz_punktow::AbstractMatrix{T}, dla_jakiego_punktu::Int, nn::Int) where {T<:AbstractFloat}
+function ncbj2_sasiedzi(macierz_punktow::AbstractMatrix{T}, dla_jakiego_punktu::Int, nn::Int) where {T <: AbstractFloat}
     N = size(macierz_punktow, 2)
     x_i = @view macierz_punktow[:, dla_jakiego_punktu]
-    distanse = zeros(T,N)
+    distanse = zeros(T, N)
 
     for j in 1:N
-       @views  distanse[j] = norm(macierz_punktow[:, j] - x_i)
+        @views  distanse[j] = norm(macierz_punktow[:, j] - x_i)
     end
 
-    indeksy_𝛈 = sortperm(distanse)[2 : nn + 1]
+    indeksy_𝛈 = sortperm(distanse)[2:(nn + 1)]
     𝛈 = zeros(T, size(macierz_punktow, 1), nn)
 
     for k in 1:nn
         𝛈[:, k] = macierz_punktow[:, indeksy_𝛈[k]]
     end
-# trzeba tutaj dodać element by wychdoziły w tym samym typie
+    # trzeba tutaj dodać element by wychdoziły w tym samym typie
     # rzeczy jak \eta i x_i, bo inaczej będzie problem z typami w dalszych obliczeniach
-    return 𝛈, indeksy_𝛈 , collect(x_i)
+    return 𝛈, indeksy_𝛈, collect(x_i)
 end
 
 """
@@ -77,39 +74,39 @@ function ncbj3_svd_wagi_dla_x_i(sasiedzi::AbstractMatrix{<:Real}, x_i::AbstractV
     T = promote_type(eltype(sasiedzi), eltype(x_i))
     S = Matrix{T}(sasiedzi)
     x = Vector{T}(x_i)
-    
+
     𝛈 = size(S, 2)
     Z = S .- x
-    
+
     # Artykuł definiuje macierz otoczenia X_i jako macierz K x D,
     # dlatego transponujemy nasze Z
     X_i = Z'
-    
+
     # Wykonujemy rozkład SVD. Używamy full=true, aby macierz U miała
     # pełny wymiar K x K, co jest wymagane do wyizolowania podprzestrzeni szumu.
-    F = svd(X_i, full=true)
+    F = svd(X_i, full = true)
     U = F.U
-    
+
     # U_2 to podmacierz zawierająca kolumny od d+1 do K, opisująca szum
-    U_2 = U[:, d+1:𝛈]
-    
+    U_2 = U[:, (d + 1):𝛈]
+
     # Wektor jedynek o długości równej liczbie sąsiadów
     ones_vec = ones(T, 𝛈)
-    
+
     #  w = (U_2 * U_2' * 1) / (1' * U_2 * U_2' * 1).
     🥕 = U_2' * ones_vec
     licznik = U_2 * 🥕
     mianownik = dot(ones_vec, licznik)
-    
+
     w = licznik ./ mianownik
-    
+
     return w
 end
 
 """
     ncbj3_calculate_wagi_dla_x_i(sasiedzi::Matrix{Float32}, x_i::Vector{Float32}; dx::Float32 = 1e-3)
 """
-function ncbj3_calculate_wagi_dla_x_i(sasiedzi::AbstractMatrix{<:Real}, x_i::AbstractVector{<:Real}; dx=1e-3)
+function ncbj3_calculate_wagi_dla_x_i(sasiedzi::AbstractMatrix{<:Real}, x_i::AbstractVector{<:Real}; dx = 1.0e-3)
     # podmienia typy na wspólny w zależności od tego jaki jest typ elementów macierzy sasiedzi
     T = promote_type(eltype(sasiedzi), eltype(x_i), typeof(dx))
     S = Matrix{T}(sasiedzi)
@@ -123,13 +120,13 @@ function ncbj3_calculate_wagi_dla_x_i(sasiedzi::AbstractMatrix{<:Real}, x_i::Abs
 end
 
 
-function ncbj4_lle_basic(macierz_punktow::AbstractMatrix{T}, nn::Int; dx=dx) where {T<:AbstractFloat}
+function ncbj4_lle_basic(macierz_punktow::AbstractMatrix{T}, nn::Int; dx = dx) where {T <: AbstractFloat}
     N = size(macierz_punktow, 2)
     W = zeros(T, N, N)
 
     for i in 1:N
         sasiedzi, indeksy, x_i = ncbj2_sasiedzi(macierz_punktow, i, nn)
-        w = ncbj3_calculate_wagi_dla_x_i(sasiedzi, x_i; dx=dx)
+        w = ncbj3_calculate_wagi_dla_x_i(sasiedzi, x_i; dx = dx)
         @inbounds for k in 1:nn
             W[i, indeksy[k]] = w[k]
         end
@@ -138,7 +135,7 @@ function ncbj4_lle_basic(macierz_punktow::AbstractMatrix{T}, nn::Int; dx=dx) whe
     return W
 end
 
-function ncbj4_lle_svd(macierz_punktow::AbstractMatrix{T}, nn::Int) where {T<:AbstractFloat}
+function ncbj4_lle_svd(macierz_punktow::AbstractMatrix{T}, nn::Int) where {T <: AbstractFloat}
     N = size(macierz_punktow, 2)
     W = zeros(T, N, N)
 
@@ -157,8 +154,7 @@ function ncbj5_nowy_manifold(W)
     N = size(W, 1)
     M = (I - W)' * (I - W)
     F = eigen(Symmetric(M))
-    Y = F.vectors[:, 2:5]'.*sqrt(N)
-    
+    Y = F.vectors[:, 2:5]' .* sqrt(N)
+
     return Y
 end
-

@@ -17,13 +17,13 @@ function generate_initial_conditions(
 ```
 """
 function generate_initial_conditions(
-    n::Integer;
-    T_range::Tuple{<:Real,<:Real}=(400.0, 2500.0),
-    A_range::Tuple{<:Real,<:Real}=(-8.0, 20.0),
-    temperature_unit::Symbol=:MeV,
-    seed::Integer=5,
-    rng::Union{AbstractRNG,Nothing}=nothing,
-)
+        n::Integer;
+        T_range::Tuple{<:Real, <:Real} = (400.0, 2500.0),
+        A_range::Tuple{<:Real, <:Real} = (-8.0, 20.0),
+        temperature_unit::Symbol = :MeV,
+        seed::Integer = 5,
+        rng::Union{AbstractRNG, Nothing} = nothing,
+    )
     @assert n > 0 "n must be positive."
     T_min, T_max = T_range
     A_min, A_max = A_range
@@ -32,12 +32,12 @@ function generate_initial_conditions(
 
     rng_local = isnothing(rng) ? Xoshiro(seed) : rng
 
-    ics = Vector{SVector{2,Float64}}(undef, n)
+    ics = Vector{SVector{2, Float64}}(undef, n)
     @inbounds for i in eachindex(ics)
         T0 = rand(rng_local) * (T_max - T_min) + T_min
         T0_fm = temperature_to_fm(T0, temperature_unit)
         A0 = rand(rng_local) * (A_max - A_min) + A_min
-        ics[i] = SVector{2,Float64}(T0_fm, A0)
+        ics[i] = SVector{2, Float64}(T0_fm, A0)
     end
     return ics
 end

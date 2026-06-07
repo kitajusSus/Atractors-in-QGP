@@ -1,5 +1,3 @@
-
-
 using TaylorSeries
 using Symbolics
 
@@ -18,5 +16,5 @@ function main()
     granica = f[0]
 
 
-    println("\nGranica w zerze wynosi: ", granica)
+    return println("\nGranica w zerze wynosi: ", granica)
 end

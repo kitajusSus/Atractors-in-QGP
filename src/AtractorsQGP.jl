@@ -5,7 +5,7 @@ abstract type AbstractHydroModel end
 """
 Hydrodynamic transport parameters.
 """
-struct HydroParams{T<:Real}
+struct HydroParams{T <: Real}
     eta_over_s::T
     tau_pi::T
     lambda1::T
@@ -36,20 +36,39 @@ export animate_pca_evolution, plot_pca_bar_variance, plot_lle_grid, plot_lle_emb
 export plot_phase_space_evolution, plot_phase_space_evolution_3d
 include("analysis/fit_polynomials.jl")
 export compute_polynomial_lle
+
+# ── PINNs ──────────────────────────────────────────────────────────────────
+include("pinns/network.jl")
+include("pinns/losses.jl")
+include("pinns/training.jl")
+include("pinns/pinn_solver.jl")
+include("pinns/jacobian_analysis.jl")
+export PINNConfig, build_pinn_network, normalize_pinn_input, denormalize_pinn_output
+export pinn_predict
+export train_pinn, PINNResult
+export predict_trajectories_pinn, build_pinn_dataset
+export compare_pinn_ode, pinn_attractor_analysis
+# Jacobian-based dimensionality reduction
+export pinn_jacobian, pinn_jacobian_full
+export d_eff_from_singular_values, pinn_deff_at
+export pinn_deff_scan, pinn_jacobian_scan
+export pinn_hydrodynamisation_time
+export sample_ic_ensemble, fixed_transport_ic_ensemble
+export pinn_dimensionality_workflow
 include("io/data_io.jl")
 
 export HydroParams, AbstractHydroModel, BRSSSModel, MISModel
 export HBARC_MEV_FM, MEV_PER_FM, FM_PER_MEV, to_temperature_unit, temperature_to_fm
 export solve_hydro, generate_initial_conditions, generate_trajectories
-export build_dataset,run_pca, run_pca_kernel, run_pca_per_time, estimate_dimension
+export build_dataset, run_pca, run_pca_kernel, run_pca_per_time, estimate_dimension
 export explained_variance_ratio_from_svd,
-       normalize_minmax,
-       run_pca,
-       run_pca_kernel,
-       get_tau_slice,
-       run_pca_for_tau,
-       run_pca_per_time,
-       run_evolution_pca_workflow
+    normalize_minmax,
+    run_pca,
+    run_pca_kernel,
+    get_tau_slice,
+    run_pca_for_tau,
+    run_pca_per_time,
+    run_evolution_pca_workflow
 export lle, plot_lle_dim, plot_simulation_lle
 export save_dataset_csv, load_dataset_csv, save_dataset_h5, load_dataset_h5
 export save_dataset_jls, load_dataset_jls, save_dataset, load_dataset
@@ -75,22 +94,19 @@ export run_main
 Run full simulation generating important data
 """
 function run_main(
-    model::AbstractHydroModel;
-    n_points::Integer=1000,
-    tspan::Tuple{<:Real,<:Real}=(0.22, 1.2),
-    T_range::Tuple{<:Real,<:Real}=(400.0, 2500.0),
-    A_range::Tuple{<:Real,<:Real}=(-1, 20.0),
-    saveat::Union{Real, AbstractVector{<:Real}, Nothing}=0.01,
-    seed::Integer=5,
-)
-    ics = generate_initial_conditions(n_points; T_range=T_range, A_range=A_range, seed=seed)
-    solutions = generate_trajectories(model, ics, tspan; saveat=saveat)
+        model::AbstractHydroModel;
+        n_points::Integer = 1000,
+        tspan::Tuple{<:Real, <:Real} = (0.22, 1.2),
+        T_range::Tuple{<:Real, <:Real} = (400.0, 2500.0),
+        A_range::Tuple{<:Real, <:Real} = (-1, 20.0),
+        saveat::Union{Real, AbstractVector{<:Real}, Nothing} = 0.01,
+        seed::Integer = 5,
+    )
+    ics = generate_initial_conditions(n_points; T_range = T_range, A_range = A_range, seed = seed)
+    solutions = generate_trajectories(model, ics, tspan; saveat = saveat)
     dataset = build_dataset(solutions)
-    return (solutions=solutions, dataset=dataset)
+    return (solutions = solutions, dataset = dataset)
 end
-
-
-
 
 
 end
