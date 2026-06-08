@@ -217,16 +217,17 @@ function run_pca_per_time(
         method::Symbol = :minmax,
         gamma::Float64 = 1.0,
         atol::Real = 1.0e-8,
-        feature_cols::AbstractVector{<:Integer} = collect(2:size(dataset, 2)),
+        feature_cols::Union{AbstractVector{<:Integer}, Nothing} = nothing,
     )
-    @assert size(dataset, 2) >= 3 "Dataset must contain at least [tau, features...]."
+    cols = isnothing(feature_cols) ? collect(2:size(dataset, 2)) : feature_cols
+    @assert size(dataset, 2) >= 2 "Dataset must contain at least [tau, features...]."
 
     taus = sort(unique(Float64.(dataset[:, 1])))
     pca_results = Dict{Float64, NamedTuple}()
     evr = fill(NaN, length(taus), n_components)
 
     for (i, tau) in pairs(taus)
-        _, Xtau = get_tau_slice(dataset, tau; atol = atol, feature_cols = feature_cols)
+        _, Xtau = get_tau_slice(dataset, tau; atol = atol, feature_cols = cols)
 
         if size(Xtau, 1) > 1
             res = if method === :minmax
@@ -266,9 +267,10 @@ function run_pca_for_tau(
         method::Symbol = :minmax,
         gamma::Float64 = 1.0,
         atol::Real = 1.0e-8,
-        feature_cols::AbstractVector{<:Integer} = collect(2:size(dataset, 2)),
+        feature_cols::Union{AbstractVector{<:Integer}, Nothing} = nothing,
     )
-    _, Xtau = get_tau_slice(dataset, tau; atol = atol, feature_cols = feature_cols)
+    cols = isnothing(feature_cols) ? collect(2:size(dataset, 2)) : feature_cols
+    _, Xtau = get_tau_slice(dataset, tau; atol = atol, feature_cols = cols)
     @assert size(Xtau, 1) > 1 "Need at least two points in the selected tau slice."
 
     res = if method === :minmax

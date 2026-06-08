@@ -119,8 +119,8 @@ const PLOT_KEYS = Dict(
     ),
     # pod konkretne publikacje tutaj 2020 Hydrodynamics in Phase Space 0.22 to mój czas
     # inizjalitacji τ₀
-    :tauT_heller => (L"\tau_0 T", (x, _) -> 0.22 * x[2]),
-    :tau2Tdot_heller => (L"\tau_0^2 \dot{T}", (x, _) -> 0.22^2 * ((x[2] / x[1]) * (-1 / 3 + x[3] / 18)))
+    :tauT_heller => (L"\tau_0 T", (x, _) -> 0.2 * x[2]),
+    :tau2Tdot_heller => (L"\tau_0^2 \dot{T}", (x, _) -> 0.2^2 * ((x[2] / x[1]) * (-1 / 3 + x[3] / 18)))
 )
 
 function resolve_def(def)
@@ -137,7 +137,7 @@ function resolve_def(def)
 end
 
 function get_data(dataset::AbstractMatrix{<:Real}, t::Real, xdef, ydef)
-    @assert size(dataset, 2) == 3 "Dataset must have columns [tau, T, A]."
+    @assert size(dataset, 2) >= 2 "Dataset must have at least columns [tau, feature1]."
     xlbl, xfn = resolve_def(xdef)
     ylbl, yfn = resolve_def(ydef)
 
@@ -155,8 +155,84 @@ function get_data(dataset::AbstractMatrix{<:Real}, t::Real, xdef, ydef)
     return (x = x, y = y, xlabel = xlbl, ylabel = ylbl)
 end
 
+"""
+    get_limits(dataset::AbstractMatrix{<:Real}, def; times = nothing, padding = 0.05)
+
+Calculates the padded `(min, max)` range for a single plot key definition `def`.
+If `times` is `nothing`, it uses all unique `tau` values in the dataset.
+"""
+function get_limits(dataset::AbstractMatrix{<:Real}, def; times = nothing, padding = 0.05)
+    lbl, fn = resolve_def(def)
+    ts = isnothing(times) ? unique(dataset[:, 1]) : times
+    vals = Float64[]
+    for t in ts
+        rows = findall(isapprox.(dataset[:, 1], t; atol = 1.0e-8))
+        if isempty(rows)
+            nearest = argmin(abs.(dataset[:, 1] .- t))
+            rows = findall(isapprox.(dataset[:, 1], dataset[nearest, 1]; atol = 1.0e-8))
+        end
+        selected = dataset[rows, :]
+        for i in 1:size(selected, 1)
+            push!(vals, fn(selected[i, :], selected))
+        end
+    end
+    if isempty(vals)
+        return (0.0, 1.0)
+    end
+    val_min, val_max = minimum(vals), maximum(vals)
+    dval = val_max - val_min
+    if dval ≈ 0.0
+        dval = val_min ≈ 0.0 ? 1.0 : abs(val_min) * 0.1
+    end
+    return (val_min - padding * dval, val_max + padding * dval)
+end
+
+"""
+    get_limits(dataset::AbstractMatrix{<:Real}, xdef, ydef; times = nothing, padding = 0.05)
+
+Calculates the padded `(xmin, xmax, ymin, ymax)` ranges for both axis definitions `xdef` and `ydef`.
+If `times` is `nothing`, it uses all unique `tau` values in the dataset.
+"""
+function get_limits(dataset::AbstractMatrix{<:Real}, xdef, ydef; times = nothing, padding = 0.05)
+    xlbl, xfn = resolve_def(xdef)
+    ylbl, yfn = resolve_def(ydef)
+    ts = isnothing(times) ? unique(dataset[:, 1]) : times
+    x_vals = Float64[]
+    y_vals = Float64[]
+    for t in ts
+        rows = findall(isapprox.(dataset[:, 1], t; atol = 1.0e-8))
+        if isempty(rows)
+            nearest = argmin(abs.(dataset[:, 1] .- t))
+            rows = findall(isapprox.(dataset[:, 1], dataset[nearest, 1]; atol = 1.0e-8))
+        end
+        selected = dataset[rows, :]
+        for i in 1:size(selected, 1)
+            row = selected[i, :]
+            push!(x_vals, xfn(row, selected))
+            push!(y_vals, yfn(row, selected))
+        end
+    end
+    if isempty(x_vals) || isempty(y_vals)
+        return (0.0, 1.0, 0.0, 1.0)
+    end
+    xmin, xmax = minimum(x_vals), maximum(x_vals)
+    ymin, ymax = minimum(y_vals), maximum(y_vals)
+    dx = xmax - xmin
+    dy = ymax - ymin
+    if dx ≈ 0.0
+        dx = xmin ≈ 0.0 ? 1.0 : abs(xmin) * 0.1
+    end
+    if dy ≈ 0.0
+        dy = ymin ≈ 0.0 ? 1.0 : abs(ymin) * 0.1
+    end
+    return (
+        xmin - padding * dx, xmax + padding * dx,
+        ymin - padding * dy, ymax + padding * dy,
+    )
+end
+
 function _split_trajectories(dataset::AbstractMatrix{<:Real})
-    @assert size(dataset, 2) == 3 "Dataset must have columns [tau, T, A]."
+    @assert size(dataset, 2) >= 2 "Dataset must have at least columns [tau, feature1]."
     if size(dataset, 1) == 0
         return UnitRange{Int}[]
     end
@@ -177,13 +253,15 @@ function _split_trajectories(dataset::AbstractMatrix{<:Real})
     return ranges
 end
 
-function plot_phase_space_grid(dataset::AbstractMatrix{<:Real}, times, xdef, ydef)
+function plot_phase_space_grid(dataset::AbstractMatrix{<:Real}, times, xdef, ydef; limits = nothing)
     set_publication_theme(cmap = :haline)
     palette = Makie.theme(:Palette).color[]
     n = length(times)
     ncols = min(3, n)
     nrows = ceil(Int, n / ncols)
     fig = Figure(size = (400 * ncols, 350 * nrows))
+
+    lims = isnothing(limits) ? get_limits(dataset, xdef, ydef; times = times, padding = 0.05) : limits
 
     for (i, t) in enumerate(times)
         row = (i - 1) ÷ ncols + 1
@@ -196,7 +274,7 @@ function plot_phase_space_grid(dataset::AbstractMatrix{<:Real}, times, xdef, yde
             xlabel = d.xlabel,
             ylabel = d.ylabel,
 
-            limits = (0, maximum(dataset[:, 2]) * 1.05, minimum(dataset[:, 3]) * 1.05, maximum(dataset[:, 3]) * 1.05)
+            limits = lims
         )
         scatter!(ax, d.x, d.y; markersize = 3.0, color = palette[3], strokecolor = :black, strokewidth = 0.5)
     end
@@ -788,5 +866,20 @@ function plot_lle_grid(lle_results::Dict, taus; labels = nothing)
         end
     end
 
+    return fig
+end
+
+function plot_pinn_deff_evolution(results::AbstractMatrix{<:Real})
+    set_publication_theme()
+    palette = Makie.theme(:Palette).color[]
+    fig = Figure(size = (850, 600))
+    ax = Axis(
+        fig[1, 1],
+        title = L"\text{Ewolucja wymiaru efektywnego } d_{\mathrm{eff}} \text{ w czasie } \tau",
+        xlabel = L"\tau\,[\mathrm{fm}/c]",
+        ylabel = L"d_{\mathrm{eff}}",
+        limits = (minimum(results[:, 1]), maximum(results[:, 1]), 0.95, maximum(results[:, 2]) * 1.05)
+    )
+    lines!(ax, results[:, 1], results[:, 2], color = palette[1], linewidth = 3.0)
     return fig
 end
