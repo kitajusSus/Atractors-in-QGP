@@ -2,7 +2,7 @@
 
 julia_version = "1.12.6"
 manifest_format = "2.0"
-project_hash = "6c3a94974b2d2ef109c670d3be79f87724684a43"
+project_hash = "6f3d49ad6c97c13c5aacf6f024d40885c655946d"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "bbc22a9a08a0ef6460041086d8a7b27940ed4ffd"
@@ -175,7 +175,7 @@ version = "1.1.3"
     oneAPI = "8f75cd03-7ff8-4ecb-9b8f-daf728133b1b"
 
 [[deps.AtractorsQGP]]
-deps = ["CSV", "CairoMakie", "ColorSchemes", "ComponentArrays", "DataFrames", "DifferentialEquations", "Flux", "ForwardDiff", "GLMakie", "HDF5", "KrylovKit", "LaTeXStrings", "Latexify", "LinearAlgebra", "Lux", "MultivariateStats", "NearestNeighbors", "Optimisers", "OrdinaryDiffEqRosenbrock", "Polynomials", "ProgressMeter", "Random", "Serialization", "StaticArrays", "Statistics", "Symbolics", "Zygote"]
+deps = ["Arpack", "CSV", "CairoMakie", "ColorSchemes", "ComponentArrays", "DataFrames", "DifferentialEquations", "Distances", "Flux", "ForwardDiff", "GLMakie", "HDF5", "KrylovKit", "LaTeXStrings", "Latexify", "LinearAlgebra", "Lux", "MultivariateStats", "NearestNeighbors", "Optimisers", "OrdinaryDiffEqRosenbrock", "Polynomials", "ProgressMeter", "Random", "Serialization", "SparseArrays", "StaticArrays", "Statistics", "Symbolics", "Zygote"]
 path = "."
 uuid = "3aa772ee-73c7-4728-8ce2-799db91c0e5f"
 version = "0.2.1"

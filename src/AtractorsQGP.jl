@@ -13,6 +13,7 @@ end
 
 include("models/brsss.jl")
 include("models/mis.jl")
+include("models/hjsw.jl")
 
 include("constants/units.jl")
 
@@ -29,10 +30,15 @@ include("simulation/initial_conditions.jl")
 include("simulation/trajectories.jl")
 
 include("analysis/lle.jl")
+export run_lle_per_time, lle, run_lle_for_selected_taus, lle_spectrum, lle_spectrum_over_k, spectrum_statistics, scan_lle_spectrum
+
 include("analysis/pca.jl")
 include("analysis/dimension.jl")
 include("analysis/plots.jl")
 export animate_pca_evolution, plot_pca_bar_variance, plot_lle_grid, plot_lle_embedding
+export plot_lle_results_for_taus, plot_lle_spectrum_analysis, plot_lle_spectrum_scan_analysis
+export plot_lle_spectrum_statistics_grid
+export plot_pinn_deff_evolution
 export plot_phase_space_evolution, plot_phase_space_evolution_3d
 include("analysis/fit_polynomials.jl")
 export compute_polynomial_lle
@@ -43,6 +49,7 @@ include("pinns/losses.jl")
 include("pinns/training.jl")
 include("pinns/pinn_solver.jl")
 include("pinns/jacobian_analysis.jl")
+include("pinns/data_jacobian_analysis.jl")
 export PINNConfig, build_pinn_network, normalize_pinn_input, denormalize_pinn_output
 export pinn_predict
 export train_pinn, PINNResult
@@ -55,12 +62,19 @@ export pinn_deff_scan, pinn_jacobian_scan
 export pinn_hydrodynamisation_time
 export sample_ic_ensemble, fixed_transport_ic_ensemble
 export pinn_dimensionality_workflow
+# Data-driven Neural Jacobians
+export normalize_generic, build_generic_network, compute_data_jacobian
 include("io/data_io.jl")
 
-export HydroParams, AbstractHydroModel, BRSSSModel, MISModel
+# idl twonn
+include("analysis/intrinsic_dimension.jl")
+export estimate_lid, estimate_twonn, estimate_dimension, scan_intrinsic_dimensions
+
+
+export HydroParams, AbstractHydroModel, BRSSSModel, MISModel, HJSWModel
 export HBARC_MEV_FM, MEV_PER_FM, FM_PER_MEV, to_temperature_unit, temperature_to_fm
 export solve_hydro, generate_initial_conditions, generate_trajectories
-export build_dataset, run_pca, run_pca_kernel, run_pca_per_time, estimate_dimension
+export build_dataset, run_pca, run_pca_kernel, run_pca_per_time, estimate_dimension, scan_dimension_from_data
 export explained_variance_ratio_from_svd,
     normalize_minmax,
     run_pca,
@@ -69,11 +83,11 @@ export explained_variance_ratio_from_svd,
     run_pca_for_tau,
     run_pca_per_time,
     run_evolution_pca_workflow
-export lle, plot_lle_dim, plot_simulation_lle
+export lle, plot_lle_dim, plot_simulation_lle, plot_lle_spectrum_statistics, plot_lle_spectrum_statistics_grid
 export save_dataset_csv, load_dataset_csv, save_dataset_h5, load_dataset_h5
 export save_dataset_jls, load_dataset_jls, save_dataset, load_dataset
-export set_publication_theme, resolve_def, get_data
-export plot_phase_space_grid, plot_thermodynamics_evolution, plot_pca_summary, plot_pca_evr_over_time
+export set_publication_theme, resolve_def, get_data, get_limits
+export plot_phase_space_grid, plot_thermodynamics_evolution, plot_pca_summary, plot_pca_evr_over_time, plot_twonn, plot_lid_dimension
 export run_main
 
 
@@ -95,14 +109,46 @@ Run full simulation generating important data
 """
 function run_main(
         model::AbstractHydroModel;
-        n_points::Integer = 1000,
-        tspan::Tuple{<:Real, <:Real} = (0.22, 1.2),
-        T_range::Tuple{<:Real, <:Real} = (400.0, 2500.0),
-        A_range::Tuple{<:Real, <:Real} = (-1, 20.0),
+        n_points::Integer = 5000,
+        tspan::Tuple{<:Real, <:Real} = (0.2, 1.2),
+        T_range::Tuple{<:Real, <:Real} = (200.0, 1400.0),
+        A_range::Tuple{<:Real, <:Real} = (-1, 7),
         saveat::Union{Real, AbstractVector{<:Real}, Nothing} = 0.01,
         seed::Integer = 5,
     )
     ics = generate_initial_conditions(n_points; T_range = T_range, A_range = A_range, seed = seed)
+    solutions = generate_trajectories(model, ics, tspan; saveat = saveat)
+    dataset = build_dataset(solutions)
+    return (solutions = solutions, dataset = dataset)
+end
+
+
+function run_main(
+        model::HJSWModel;
+        n_points::Integer = 5000,
+        tspan::Tuple{<:Real, <:Real} = (0.2, 1.2),
+        T_range::Tuple{<:Real, <:Real} = (200.0, 1400.0),
+        A_MIS_range::Union{Nothing, Tuple{<:Real, <:Real}} = nothing,
+        A_QNM_range::Tuple{<:Real, <:Real} = (-2.0, 2.0),
+        A_range::Union{Nothing, Tuple{<:Real, <:Real}} = nothing,
+        saveat::Union{Real, AbstractVector{<:Real}, Nothing} = 0.01,
+        seed::Integer = 5,
+    )
+    actual_A_MIS_range = if !isnothing(A_MIS_range)
+        A_MIS_range
+    elseif !isnothing(A_range)
+        A_range
+    else
+        (-1.0, 10.0)
+    end
+    ics = generate_initial_conditions(
+        model,
+        n_points;
+        T_range = T_range,
+        A_MIS_range = actual_A_MIS_range,
+        A_QNM_range = A_QNM_range,
+        seed = seed,
+    )
     solutions = generate_trajectories(model, ics, tspan; saveat = saveat)
     dataset = build_dataset(solutions)
     return (solutions = solutions, dataset = dataset)

@@ -1,16 +1,10 @@
 """
-High-level PINN solver API.
-
 This file provides:
 - `predict_trajectories_pinn`  – predict solution families, compatible with `build_dataset`
 - `build_pinn_dataset`          – convenience wrapper
 - `compare_pinn_ode`            – point-wise accuracy diagnostics
 - `pinn_attractor_analysis`     – run PCA on PINN predictions to track dimensionality
 """
-
-# ---------------------------------------------------------------------------
-# Trajectory prediction
-# ---------------------------------------------------------------------------
 
 """
     predict_trajectories_pinn(result, initial_conditions, model, tspan; saveat)
@@ -54,9 +48,6 @@ function predict_trajectories_pinn(
     end
 end
 
-# ---------------------------------------------------------------------------
-# Dataset builder (ODE-compatible)
-# ---------------------------------------------------------------------------
 
 """
     build_pinn_dataset(result, initial_conditions, model, tspan; saveat, temperature_unit)
@@ -81,9 +72,6 @@ function build_pinn_dataset(
     return build_dataset(pinn_sols; temperature_unit = temperature_unit)
 end
 
-# ---------------------------------------------------------------------------
-# Accuracy diagnostics (ODE vs PINN)
-# ---------------------------------------------------------------------------
 
 """
     compare_pinn_ode(result, model, ic, tspan; saveat) -> NamedTuple
@@ -136,9 +124,6 @@ function compare_pinn_ode(
     )
 end
 
-# ---------------------------------------------------------------------------
-# Attractor analysis via PINN
-# ---------------------------------------------------------------------------
 
 """
     pinn_attractor_analysis(result, model, tspan; n_points, saveat, n_components, kwargs...)

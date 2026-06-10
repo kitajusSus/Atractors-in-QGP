@@ -19,9 +19,6 @@ Physics residual architecture
 
 using Statistics
 
-# ---------------------------------------------------------------------------
-# Internal helpers
-# ---------------------------------------------------------------------------
 
 # Scalar (re-)normalisation helpers — already defined in network.jl
 # @inline _norm(v, lo, hi)   = 2*(v-lo)/(hi-lo) - 1
@@ -67,9 +64,6 @@ function _bjorken_rhs_vec(T, A, τ, η, τπ, λ1::Real)
     return dT, dA
 end
 
-# ---------------------------------------------------------------------------
-# Reconstruction helpers (kept for pinn_solver.jl compatibility)
-# ---------------------------------------------------------------------------
 
 function _make_brsss_from(m::BRSSSModel, η::Real, τπ::Real)
     return BRSSSModel(; eta_over_s = η, tau_pi = τπ, lambda1 = m.params.lambda1)
@@ -77,21 +71,11 @@ end
 function _make_brsss_from(m::MISModel, η::Real, τπ::Real)
     return MISModel(; eta_over_s = η, tau_pi = τπ)
 end
-
-# ---------------------------------------------------------------------------
-# Scalar prediction (kept for pinn_solver.jl / compare_pinn_ode)
-# ---------------------------------------------------------------------------
-
 function ic_residual(nn, ps, st, T₀, A₀, η, τπ, config::PINNConfig)
     τ₀ = config.τ_range[1]
     u_pred = pinn_predict(nn, ps, st, τ₀, T₀, A₀, η, τπ, config)
     return sum(abs2, u_pred .- [T₀, A₀])
 end
-
-# ---------------------------------------------------------------------------
-# Batched PINN loss  (main training target)
-# ---------------------------------------------------------------------------
-
 """
     pinn_loss(nn, ps, st, batch_colloc, batch_ic, model, config; λ_physics, λ_ic, h)
     -> (loss::Float64, st)

@@ -17,7 +17,7 @@ function HJSWModel(;
         eta_over_s::Real = 1 / (4 * π),
         tau_pi::Real = 1 / (2 * π),
         lambda1::Real = 0.0,
-        omega_R::Real = 9.800,
+        omega_R::Real = 9.8,
         omega_I::Real = 8.629,
     )
     T = promote_type(typeof(eta_over_s), typeof(tau_pi), typeof(lambda1), typeof(omega_R), typeof(omega_I))

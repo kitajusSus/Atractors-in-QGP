@@ -65,28 +65,42 @@ function generate_trajectories(
 end
 
 function build_dataset(solutions::AbstractVector; temperature_unit::Symbol = :fm)
+    if temperature_unit !== :fm && temperature_unit !== :MeV
+        throw(ArgumentError("temperature_unit must be :fm or :MeV"))
+    end
+    if isempty(solutions)
+        return Matrix{Float64}(undef, 0, 3)
+    end
+
+    state_dim = length(solutions[1].u[1])
+    n_cols = 1 + state_dim
     n_rows = sum(length(sol.t) for sol in solutions)
-    data = Matrix{Float64}(undef, n_rows, 3)
+    data = Matrix{Float64}(undef, n_rows, n_cols)
     hbarc = 197.3269804
 
     row_idx = 1
     @inbounds for sol in solutions
         for i in eachindex(sol.t)
             tau = sol.t[i]
-            T = sol.u[i][1]
-            A = sol.u[i][2]
+            all_finite = isfinite(tau) && all(isfinite, sol.u[i])
 
-            if temperature_unit === :MeV
-                T = T * hbarc
+            if all_finite
+                data[row_idx, 1] = tau
+                
+                T = sol.u[i][1]
+                if temperature_unit === :MeV
+                    T = T * hbarc
+                end
+                data[row_idx, 2] = T
+                
+                for col in 3:n_cols
+                    data[row_idx, col] = sol.u[i][col-1]
+                end
+
+                row_idx += 1
             end
-
-            data[row_idx, 1] = tau
-            data[row_idx, 2] = T
-            data[row_idx, 3] = A
-
-            row_idx += 1
         end
     end
 
-    return data
+    return data[1:row_idx-1, :]
 end

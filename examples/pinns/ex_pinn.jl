@@ -66,6 +66,9 @@ function analizuj_zanik_wymiaru(model, X_train)
     prog_atraktora = 1.05 # Definiujemy, że d_eff < 1.05 to wymiar 1D
     idx_kolapsu = findfirst(x -> x < prog_atraktora, srednie_d_eff)
 
+    # Note: tau_c is set here for visualization compatibility
+    tau_c = isnothing(idx_kolapsu) ? NaN : taus[idx_kolapsu]
+
     fig = Figure(size = (800, 500))
     ax = Axis(
         fig[1, 1],

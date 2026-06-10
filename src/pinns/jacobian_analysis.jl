@@ -324,9 +324,6 @@ function pinn_jacobian_scan(
     )
 end
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Hydrodynamisation time
-# ─────────────────────────────────────────────────────────────────────────────
 
 """
     pinn_hydrodynamisation_time(scan; threshold=1.05) → Float64
@@ -339,17 +336,14 @@ function pinn_hydrodynamisation_time(scan::NamedTuple; threshold::Real = 1.05)
     return scan.taus[idx]
 end
 
-# ─────────────────────────────────────────────────────────────────────────────
-# IC ensemble builders
-# ─────────────────────────────────────────────────────────────────────────────
 
 """
     sample_ic_ensemble(result::PINNResult, n; seed=7) → Vector
 
 Sample n ICs (T₀, A₀, η, τπ) uniformly from `result.config` ranges.
 """
-function sample_ic_ensemble(result::PINNResult, n::Int; seed::Int = 7)
-    rng = MersenneTwister(seed)
+function sample_ic_ensemble(result::PINNResult, n::Int)
+    rng = Xoshiro(5)
     cfg = result.config
     _r(lo, hi) = lo + rand(rng) * (hi - lo)
     return [
@@ -368,9 +362,9 @@ Like `sample_ic_ensemble` but with fixed transport coefficients.
 """
 function fixed_transport_ic_ensemble(
         result::PINNResult, n::Int;
-        η::Real, τπ::Real, seed::Int = 7,
+        η::Real, τπ::Real
     )
-    rng = MersenneTwister(seed)
+    rng = Xoshiro(5)
     cfg = result.config
     _r(lo, hi) = lo + rand(rng) * (hi - lo)
     return [
@@ -410,11 +404,10 @@ function pinn_dimensionality_workflow(
         n_ic::Int = 200,
         taus = collect(0.22:0.02:1.2),
         full::Bool = false,
-        seed_ic::Int = 7,
         train_kw...
     )
     result = train_pinn(model, config; train_kw...)
-    ics = sample_ic_ensemble(result, n_ic; seed = seed_ic)
+    ics = sample_ic_ensemble(result, n_ic)
     scan = pinn_deff_scan(result, taus, ics; full = full)
     τ_hyd = pinn_hydrodynamisation_time(scan)
     return (result = result, ics = ics, scan = scan, τ_hyd = τ_hyd)

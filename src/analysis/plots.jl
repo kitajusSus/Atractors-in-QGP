@@ -12,8 +12,8 @@ using LaTeXStrings
 
 """
 function set_publication_theme(;
-        cmap = :devon,         # :davos, :lajolla, :devon, :haline, :phase
-        n_colors = 10,         #
+        cmap = :davos,         # :davos, :lajolla, :devon, :haline, :phase
+        n_colors = 25,         #
         bg_color = RGBf(0.98, 0.98, 0.98)
     )
 
@@ -104,7 +104,10 @@ const PLOT_KEYS = Dict(
         L"T / T_{\mathrm{max}}",
         (x, slice) -> x[2] / maximum(slice[:, 2]),
     ),
-
+    :A_norm => (
+        L"\mathcal{A} / \mathcal{A}_{\mathrm{max}}",
+        (x, slice) -> x[3] / maximum(slice[:, 3]),
+    ),
     # lambda funkcje kongo lekkie
     # Tdot / Tdot_max dla danej chwili czasu
     :Tdot_norm => (
@@ -276,7 +279,7 @@ function plot_phase_space_grid(dataset::AbstractMatrix{<:Real}, times, xdef, yde
 
             limits = lims
         )
-        scatter!(ax, d.x, d.y; markersize = 3.0, color = palette[3], strokecolor = :black, strokewidth = 0.5)
+        scatter!(ax, d.x, d.y; markersize = 3.0, color = palette[2], strokecolor = :black, strokewidth = 0.5)
     end
     return fig
 end
@@ -458,7 +461,7 @@ function plot_pca_evr_over_time(
     hlines!(ax, [1.0], color = :gray45, linestyle = :dash, label = L"100\%")
 
     palette = Makie.theme(:Palette).color[]
-
+    kolory = [palette[5], palette[15], palette[3], palette[7], palette[2], palette[8]]
     for comp in 1:n_components
         vals = evr[:, comp]
         mask = .!isnan.(vals)
@@ -468,7 +471,7 @@ function plot_pca_evr_over_time(
                 taus[mask],
                 vals[mask],
                 linewidth = 3.0,
-                color = palette[min(comp, length(palette))],
+                color = kolory[mod1(comp, length(kolory))],
                 label = L"\text{PC}%$(comp)",
             )
             # if comp == 1
@@ -542,7 +545,7 @@ function plot_pca_bar_variance(
 
     cum_percent = cumulative_evr .* 100
     lines!(ax, 1:n_comp, cum_percent, color = :gray35, linestyle = :dash, linewidth = 2.5)
-    scatter!(ax, 1:n_comp, cum_percent, color = palette[2], markersize = 12, label = L"\text{Skumulowane EVR}")
+    scatter!(ax, 1:n_comp, cum_percent, color = palette[2], markersize = 12, label = L"\text{Suma EVR}")
 
     axislegend(ax, position = :rc)
 
@@ -641,6 +644,211 @@ function plot_pca_summary(
 
     return fig
 end
+function animate_pca_evolution(
+        dataset::AbstractMatrix{<:Real};
+        filename::String = "pca_evolution.gif",
+        fps::Int = 15,
+        n_components::Int = 2,
+        method::Symbol = :minmax,
+        gamma::Float64 = 1.0,
+        tau_tol::Float64 = 1.0e-8
+    )
+    set_publication_theme()
+
+    palette = Makie.theme(:Palette).color[]
+    taus = sort(unique(dataset[:, 1]))
+
+    fig = Figure(size = (800, 600))
+
+    title_obs = Observable(L"\text{Projekcja PCA } (\tau = %$(taus[1]))")
+    ax = Axis(
+        fig[1, 1],
+        xlabel = L"\text{PC1}",
+        ylabel = L"\text{PC2}",
+        title = title_obs
+    )
+
+    pts_obs = Observable(Point2f[])
+
+    scatter!(
+        ax,
+        pts_obs;
+        markersize = 6.0,
+        color = (palette[1], 0.75)
+    )
+
+    record(fig, filename, taus; framerate = fps) do t
+        val = round(t, digits = 3)
+        title_obs[] = L"\text{Projekcja PCA } (\tau = %$(val))"
+
+        d = abs.(dataset[:, 1] .- t)
+        mask = d .<= tau_tol
+        data_slice = dataset[mask, :]
+
+        features = data_slice[:, 2:3]
+
+        if size(features, 1) > 1
+            pca_result = if method === :minmax
+                run_pca(features; n_components = n_components)
+            elseif method === :kernel
+                run_pca_kernel(features; n_components = n_components, gamma = gamma)
+            else
+                error("Unknown PCA method. Choose :minmax or :kernel.")
+            end
+
+            transformed = pca_result.transformed
+
+            if size(transformed, 2) >= 2
+                pts_obs[] = [Point2f(transformed[i, 1], transformed[i, 2]) for i in 1:size(transformed, 1)]
+            else
+                pts_obs[] = [Point2f(transformed[i, 1], 0.0) for i in 1:size(transformed, 1)]
+            end
+
+            reset_limits!(ax)
+        end
+    end
+
+    return filename
+end
+###########################
+### FUNKCJE DO LLE
+###############################
+
+"""
+Analiza spektrum wartości własnych dla danego czasu 
+    
+    function plot_lle_spectrum_statistics(dataset; τ, k_values = 5:5:50, ile_λ = 4)
+
+- `ile_λ` - ile pierwszych wartości własnych pokazać na wykresie (domyślnie 4) 
+
+ale trzeba pamiętać że pierwsza wartość własna jest (i powinna być) zawsze λ₁ = 0
+
+"""
+function plot_lle_spectrum_statistics(dataset; τ, k_values = 5:5:50, ile_λ = 4)
+    set_publication_theme()
+
+    palette = Makie.theme(:Palette).color[]
+    spectra, ks = lle_spectrum_over_k(dataset; tau = τ, k_values = k_values)
+    μ, σ = spectrum_statistics(spectra)
+
+    x = 1:ile_λ
+    k_min = minimum(k_values)
+    k_max = maximum(k_values)
+
+    fig = Figure(size = (1400, 700))
+    ax = Axis(
+        fig[1, 1],
+        title = L"\text{LLE analiza wartości własnych [K z zakresu (%$k_min - %$k_max)] (średnia } \pm \sigma \text{) } \tau=%$τ",
+        xlabel = L"\text{Indeks wartości własnej } \lambda_{i}",
+        ylabel = L"\text{Wartość } \lambda_{i}"
+    )
+
+    scatterlines!(
+        ax, x, μ[1:ile_λ],
+        linewidth = 2,
+        color = (palette[5], 0.3),
+        markercolor = palette[5],
+        markersize = 15,
+        label = L"\text{Średnia } i\text{-ta } \lambda_{i}"
+    )
+
+    band!(
+        ax,
+        x,
+        μ[1:ile_λ] .- σ[1:ile_λ],
+        μ[1:ile_λ] .+ σ[1:ile_λ],
+        color = (palette[3], 0.2)
+    )
+
+    axislegend(ax, position = :lt)
+
+    return fig
+end
+
+
+"""
+    plot_lle_spectrum_statistics_grid(dataset, taus; k_values = 5:5:50, ile_λ = 4, atol = 1.0e-8)
+"""
+function plot_lle_spectrum_statistics_grid(dataset, taus; k_values = 5:5:50, ile_λ = 4, atol = 1.0e-8)
+    set_publication_theme()
+    palette = Makie.theme(:Palette).color[]
+
+    n = length(taus)
+    ncols = min(3, n)
+    nrows = ceil(Int, n / ncols)
+    spectra1, ks1 = lle_spectrum_over_k(dataset; tau = taus[1], k_values = k_values, atol = atol)
+    μ1, σ1 = spectrum_statistics(spectra1)
+
+    y_min = minimum(μ1[1:ile_λ] .- σ1[1:ile_λ])
+    y_max = maximum(μ1[1:ile_λ] .+ σ1[1:ile_λ])
+    y_pad = (y_max - y_min) * 0.07
+    lims = (0.9, ile_λ + 0.05, y_min - y_pad, y_max + y_pad)
+
+    fig = Figure(size = (450 * ncols + 40, 350 * nrows + 120))
+
+    k_min = minimum(k_values)
+    k_max = maximum(k_values)
+    title_text = L"\text{LLE analiza wartości własnych [K z zakresu (%$k_min - %$k_max)] (średnia } \pm \sigma \text{)}"
+    Label(fig[1, 2:(ncols + 1)], title_text, fontsize = 36, font = :bold, padding = (0, 0, 10, 0))
+
+    Label(fig[2:(nrows + 1), 1], L"\text{Wartość } \lambda_{i}", rotation = pi / 2, font = :bold, fontsize = 32)
+    Label(fig[nrows + 2, 2:(ncols + 1)], L"\text{Indeks wartości własnej } \lambda_{i}", font = :bold, fontsize = 32)
+
+    x = 1:ile_λ
+
+    for (i, tau) in enumerate(taus)
+        row = (i - 1) ÷ ncols + 2
+        col = (i - 1) % ncols + 2
+        if i == 1
+            μ, σ = μ1, σ1
+        else
+            spectra, ks = lle_spectrum_over_k(dataset; tau = tau, k_values = k_values, atol = atol)
+            μ, σ = spectrum_statistics(spectra)
+        end
+
+        ax = Axis(
+            fig[row, col],
+            title = L"\tau = %$tau\,\mathrm{fm}/c",
+            limits = lims,
+            xticks = 1:ile_λ
+        )
+
+        scatterlines!(
+            ax, x, μ[1:ile_λ],
+            linewidth = 2,
+            color = (palette[5], 0.3),
+            markercolor = palette[5],
+            markersize = 15,
+            label = L"\text{Średnia } i\text{-ta } \lambda_{i}"
+        )
+
+        band!(
+            ax,
+            x,
+            μ[1:ile_λ] .- σ[1:ile_λ],
+            μ[1:ile_λ] .+ σ[1:ile_λ],
+            color = (palette[3], 0.2)
+        )
+
+        axislegend(ax, position = :lt)
+
+        row_idx = (i - 1) ÷ ncols + 1
+        col_idx = (i - 1) % ncols + 1
+        is_bottom = (row_idx == nrows) || (i + ncols > n)
+        is_left = (col_idx == 1)
+
+        if !is_bottom
+            hidexdecorations!(ax, grid = false)
+        end
+        if !is_left
+            hideydecorations!(ax, grid = false)
+        end
+        println("Wyliczone wartości własne $tau: ", μ[1:ile_λ])
+    end
+
+    return fig
+end
+
 
 function plot_lle_dim(dataset::AbstractMatrix{<:Real}, k::Int, d::Int, tau::Real)
     set_publication_theme()
@@ -741,80 +949,10 @@ function plot_simulation_lle(dataset::AbstractMatrix{<:Real}, k::Int, d::Int, ta
     return fig
 end
 
-function animate_pca_evolution(
-        dataset::AbstractMatrix{<:Real};
-        filename::String = "pca_evolution.gif",
-        fps::Int = 15,
-        n_components::Int = 2,
-        method::Symbol = :minmax,
-        gamma::Float64 = 1.0,
-        tau_tol::Float64 = 1.0e-8
-    )
-    set_publication_theme()
-
-    palette = Makie.theme(:Palette).color[]
-    taus = sort(unique(dataset[:, 1]))
-
-    fig = Figure(size = (800, 600))
-
-    title_obs = Observable(L"\text{Projekcja PCA } (\tau = %$(taus[1]))")
-    ax = Axis(
-        fig[1, 1],
-        xlabel = L"\text{PC1}",
-        ylabel = L"\text{PC2}",
-        title = title_obs
-    )
-
-    pts_obs = Observable(Point2f[])
-
-    scatter!(
-        ax,
-        pts_obs;
-        markersize = 6.0,
-        color = (palette[1], 0.75)
-    )
-
-    record(fig, filename, taus; framerate = fps) do t
-        val = round(t, digits = 3)
-        title_obs[] = L"\text{Projekcja PCA } (\tau = %$(val))"
-
-        d = abs.(dataset[:, 1] .- t)
-        mask = d .<= tau_tol
-        data_slice = dataset[mask, :]
-
-        features = data_slice[:, 2:3]
-
-        if size(features, 1) > 1
-            pca_result = if method === :minmax
-                run_pca(features; n_components = n_components)
-            elseif method === :kernel
-                run_pca_kernel(features; n_components = n_components, gamma = gamma)
-            else
-                error("Unknown PCA method. Choose :minmax or :kernel.")
-            end
-
-            transformed = pca_result.transformed
-
-            if size(transformed, 2) >= 2
-                pts_obs[] = [Point2f(transformed[i, 1], transformed[i, 2]) for i in 1:size(transformed, 1)]
-            else
-                pts_obs[] = [Point2f(transformed[i, 1], 0.0) for i in 1:size(transformed, 1)]
-            end
-
-            reset_limits!(ax)
-        end
-    end
-
-    return filename
-end
-###########################
-### FUNKCJE DO LLE
-###############################
-
-function plot_lle_embedding(embedding::AbstractMatrix{<:Real}; labels = nothing, title = L"\text{Projekcja LLE}", osie = nothing)
+function plot_lle_embedding(dataset::AbstractMatrix{<:Real}; labels = nothing, title = L"\text{Projekcja LLE}", osie = nothing)
     set_publication_theme()
     palette = Makie.theme(:Palette).color[]
-    dim = size(embedding, 2)
+    dim = size(dataset, 2)
 
     fig = Figure(size = (750, 600))
 
@@ -824,13 +962,13 @@ function plot_lle_embedding(embedding::AbstractMatrix{<:Real}; labels = nothing,
     if dim >= 3
         ax = Axis3(fig[1, 1], title = title)
         #xlabel = L"\text{LLE1}", ylabel = L"\text{LLE2}", zlabel = L"\text{LLE3}")
-        scatter!(ax, embedding[:, 1], embedding[:, 2], embedding[:, 3], color = color_param, colormap = cmap_param, markersize = 6)
+        scatter!(ax, dataset[:, 1], dataset[:, 2], dataset[:, 3], color = color_param, colormap = cmap_param, markersize = 6)
     elseif dim == 2
         ax = Axis(fig[1, 1], title = title, xlabel = L"\text{LLE1}", ylabel = L"\text{LLE2}")
-        scatter!(ax, embedding[:, 1], embedding[:, 2], color = color_param, colormap = cmap_param, markersize = 6)
+        scatter!(ax, dataset[:, 1], dataset[:, 2], color = color_param, colormap = cmap_param, markersize = 6)
     else
         ax = Axis(fig[1, 1], title = title, xlabel = L"\text{LLE1}")
-        scatter!(ax, embedding[:, 1], zeros(size(embedding, 1)), color = color_param, colormap = cmap_param, markersize = 6)
+        scatter!(ax, dataset[:, 1], zeros(size(dataset, 1)), color = color_param, colormap = cmap_param, markersize = 6)
     end
 
     return fig
@@ -869,6 +1007,8 @@ function plot_lle_grid(lle_results::Dict, taus; labels = nothing)
     return fig
 end
 
+
+## funkcje do PINN
 function plot_pinn_deff_evolution(results::AbstractMatrix{<:Real})
     set_publication_theme()
     palette = Makie.theme(:Palette).color[]
@@ -881,5 +1021,181 @@ function plot_pinn_deff_evolution(results::AbstractMatrix{<:Real})
         limits = (minimum(results[:, 1]), maximum(results[:, 1]), 0.95, maximum(results[:, 2]) * 1.05)
     )
     lines!(ax, results[:, 1], results[:, 2], color = palette[1], linewidth = 3.0)
+    return fig
+end
+
+
+#############
+## FUNKCJE TO NN
+# ###
+#
+#
+#
+#
+#
+
+
+#########################
+# funkcje do lid mle twonn, itd
+# #########################
+#
+#
+#
+
+
+function plot_lid_dimension(dataset::AbstractMatrix{<:Real}, k::Int)
+    set_publication_theme()
+
+    palette = Makie.theme(:Palette).color[]
+    fig = Figure(size = (1200, 700))
+    ax = Axis(
+        fig[1, 1],
+        title = L"\text{Ewolucja estymowanego wymiaru LID w funkcji czasu dla różnych } k",
+        xlabel = L"\text{Czas } \tau\,[\mathrm{fm}/c]",
+        ylabel = L"\text{estymowany wymiar } d_{\mathrm{LID}}",
+    )
+    k_range = 1:10:100
+    for (idx, current_k) in enumerate(k_range)
+        taus, lid, _, _ = scan_intrinsic_dimensions(dataset, k = current_k)
+        lines!(
+            ax, taus, lid,
+            color = palette[idx],
+            linewidth = 2.5,
+            label = L"k = %$current_k"
+        )
+    end
+    return fig
+end
+
+
+function plot_twonn(dataset::AbstractMatrix{<:Real})
+    set_publication_theme()
+
+    palette = Makie.theme(:Palette).color[]
+    fig = Figure(size = (1200, 700))
+    ax = Axis(
+        fig[1, 1],
+        title = L"\text{Przykładowy wykres dla TWONN - Two Nearest Neighbors}",
+        xlabel = L"\text{Czas } \tau\,[\mathrm{fm}/c]",
+        ylabel = L"\text{estymowany wymiar } d_{\mathrm{TWONN}}",
+    )
+    taus, _, twonn, _ = scan_intrinsic_dimensions(dataset)
+    lines!(ax, taus, twonn, color = palette[3], linewidth = 2.5, label = L"\text{TWONN}")
+    axislegend(ax, position = :rt)
+    return fig
+end
+
+function plot_lle_results_for_taus(
+        dataset::AbstractMatrix{<:Real},
+        target_taus::Vector{Float64};
+        k::Integer = 20,
+        d::Integer = 2,
+        atol::Real = 1.0e-3,
+        feature_cols::AbstractVector{<:Integer} = collect(2:size(dataset, 2))
+    )
+
+    set_publication_theme()
+    palette = Makie.theme(:Palette).color[]
+
+    results = run_lle_for_selected_taus(dataset, target_taus; k = k, d = d, atol = atol, feature_cols = feature_cols)
+    lle_res = results.lle_results
+
+    n = length(target_taus)
+    ncols = min(3, n)
+    nrows = ceil(Int, n / ncols)
+
+    fig_width = max(1400, 450 * ncols)
+    fig_height = max(700, 450 * nrows)
+    fig = Figure(size = (fig_width, fig_height))
+
+    for (i, t) in enumerate(target_taus)
+        if !haskey(lle_res, t)
+            continue
+        end
+        row = (i - 1) ÷ ncols + 1
+        col = (i - 1) % ncols + 1
+
+        embedding = lle_res[t]
+        dim = size(embedding, 2)
+
+        ax_title = L"\tau = %$(round(t, digits=2))"
+        if dim >= 3
+            ax = Axis3(fig[row, col], title = ax_title, xlabel = L"\text{LLE1}", ylabel = L"\text{LLE2}", zlabel = L"\text{LLE3}")
+            scatter!(ax, embedding[:, 1], embedding[:, 2], embedding[:, 3], color = (palette[1], 0.75), markersize = 6)
+        elseif dim == 2
+            ax = Axis(fig[row, col], title = ax_title, xlabel = L"\text{LLE1}", ylabel = L"\text{LLE2}")
+            scatter!(ax, embedding[:, 1], embedding[:, 2], color = (palette[1], 0.75), markersize = 6)
+        else
+            ax = Axis(fig[row, col], title = ax_title, xlabel = L"\text{LLE1}")
+            scatter!(ax, embedding[:, 1], zeros(size(embedding, 1)), color = (palette[1], 0.75), markersize = 6)
+        end
+    end
+
+    return fig
+end
+
+function plot_lle_spectrum_analysis(
+        dataset::AbstractMatrix{<:Real},
+        tau::Real;
+        k_values = 5:5:50,
+        atol::Real = 1.0e-8
+    )
+
+    set_publication_theme()
+    palette = Makie.theme(:Palette).color[]
+
+    spectra, ks = lle_spectrum_over_k(dataset; tau = tau, k_values = k_values, atol = atol)
+
+    fig = Figure(size = (1400, 700))
+    ax = Axis(
+        fig[1, 1],
+        title = L"\text{Widmo LLE dla różnych } k \text{, } \tau = %$(tau)",
+        xlabel = L"\text{Indeks wartości własnej}",
+        ylabel = L"\lambda"
+    )
+
+    for (i, (s, k)) in enumerate(zip(spectra, ks))
+        col = palette[mod1(i, length(palette))]
+        lines!(ax, 1:length(s), s, label = L"k = %$k", linewidth = 2.5, color = col)
+    end
+
+    axislegend(ax, position = :lt, nbanks = 2)
+    return fig
+end
+
+function plot_lle_spectrum_scan_analysis(
+        dataset::AbstractMatrix{<:Real},
+        taus::Vector{Float64};
+        k_values = 5:5:50
+    )
+
+    set_publication_theme()
+    palette = Makie.theme(:Palette).color[]
+
+    results = scan_lle_spectrum(dataset; taus = taus, k_values = k_values)
+
+    fig = Figure(size = (1400, 700))
+    ax = Axis(
+        fig[1, 1],
+        title = L"\text{Statystyki widma LLE w czasie}",
+        xlabel = L"\text{Indeks wartości własnej}",
+        ylabel = L"\lambda"
+    )
+
+    for (i, t) in enumerate(taus)
+        if !haskey(results, t)
+            continue
+        end
+        res = results[t]
+        μ = res.mean
+        σ = res.std
+        x = 1:length(μ)
+
+        col = palette[mod1(i, length(palette))]
+        lines!(ax, x, μ, label = L"\tau = %$(t)", linewidth = 3, color = col)
+        band!(ax, x, μ .- σ, μ .+ σ, color = (col, 0.2))
+    end
+
+    axislegend(ax, position = :rt, nbanks = 2)
     return fig
 end

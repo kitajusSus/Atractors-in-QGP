@@ -9,7 +9,61 @@ function plot_examples_lle(X, Y, labels)
 
     return fig
 end
+function plot_lle_spectrum_heatmap(dataset; τs, k = 20)
+    set_publication_theme()
 
+    spectra_matrix = []
+
+    for τ in τs
+        _, Xτ = get_tau_slice(dataset, τ)
+        X = Matrix{Float64}(Xτ)'
+
+        if size(X, 2) > k + 2
+            λ = lle_spectrum(X; k = k)
+            push!(spectra_matrix, λ)
+        end
+    end
+
+    min_len = minimum(length.(spectra_matrix))
+    S = hcat([s[1:min_len] for s in spectra_matrix]...)
+
+    fig = Figure(size = (900, 600))
+    ax = Axis(
+        fig[1, 1],
+        title = L"\text{LLE spectrum evolution over } \tau",
+        xlabel = L"\text{eigen index}",
+        ylabel = L"\tau"
+    )
+
+    heatmap!(ax, S)
+
+    return fig
+end
+
+function plot_lle_spectrum_stability(dataset; τ, k_values = 5:5:50)
+    set_publication_theme()
+
+    spectra, ks = compute_lle_spectra_over_k(dataset, τ; k_values = k_values)
+
+    # stability = variance of first eigenvalue (or gap)
+    stability = Float64[]
+
+    for s in spectra
+        push!(stability, s[2] - s[1])  # spectral gap
+    end
+
+    fig = Figure(size = (900, 500))
+    ax = Axis(
+        fig[1, 1],
+        title = L"\text{LLE spectral gap stability vs k, } \tau=%$τ",
+        xlabel = L"k",
+        ylabel = L"\lambda_2 - \lambda_1"
+    )
+
+    lines!(ax, ks, stability, linewidth = 3)
+
+    return fig
+end
 
 function plot_examples_lle_3d(X, Y, labels)
     fig = Figure(size = (1200, 600))

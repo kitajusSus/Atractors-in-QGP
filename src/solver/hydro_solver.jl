@@ -12,7 +12,22 @@ solve_hydro(model::AbstractHydroModel, u0::AbstractVector{<:Real}, tspan::Tuple{
     saveat=nothing,
 )
 
+
+
+
 ```
+Zwraca 
+
+```julia 
+    if isnothing(saveat)
+        return solve(problem, solver; abstol = abstol, reltol = reltol)
+    end
+    return solve(problem, solver; abstol = abstol, reltol = reltol, saveat = saveat)
+
+
+
+```
+
 """
 function solve_hydro(
         model::AbstractHydroModel, u0::AbstractVector{<:Real}, tspan::Tuple{<:Real, <:Real};
@@ -21,18 +36,18 @@ function solve_hydro(
         reltol::Real = 1.0e-6,
         saveat = nothing,
     )
-    @assert length(u0) == 2 "Initial state must contain [T, A]."
+    N = length(u0)
+    @assert (N == 2 || N == 4) "Initial state must contain [T, A] (2D) or [T, A_MIS, A_QNM, dA_QNM] (4D)."
     if tspan[1] >= tspan[2]
         throw(DomainError(tspan, "tspan must satisfy t0 < t1."))
     end
 
     Tstate = promote_type(eltype(u0), typeof(tspan[1]), typeof(tspan[2]), Float64)
-    state0 = SVector{2, Tstate}(u0[1], u0[2])
+    state0 = SVector{N, Tstate}(u0...)
     problem = ODEProblem(rhs, state0, (Tstate(tspan[1]), Tstate(tspan[2])), model)
 
     if isnothing(saveat)
         return solve(problem, solver; abstol = abstol, reltol = reltol)
     end
     return solve(problem, solver; abstol = abstol, reltol = reltol, saveat = saveat)
-
 end

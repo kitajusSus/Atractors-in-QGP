@@ -5,17 +5,29 @@ using Serialization
 
 
 """
-Save dataset matrix [tau, T, A] to CSV.
+Save dataset matrix to CSV.
 """
 function save_dataset_csv(path::AbstractString, data::AbstractMatrix{<:Real})
-    @assert size(data, 2) == 3 "Dataset must have columns [tau, T, A]."
-    df = DataFrame(tau = data[:, 1], T = data[:, 2], A = data[:, 3])
+    @assert size(data, 2) >= 2 "Dataset must have at least columns [tau, feature1]."
+    n_cols = size(data, 2)
+    col_names = Symbol[]
+    push!(col_names, :tau)
+    if n_cols >= 2
+        push!(col_names, :T)
+    end
+    if n_cols >= 3
+        push!(col_names, :A)
+    end
+    for i in 4:n_cols
+        push!(col_names, Symbol("feature$(i-1)"))
+    end
+    df = DataFrame(data, col_names)
     CSV.write(path, df)
     return path
 end
 
 """
-Load dataset matrix [tau, T, A] from CSV.
+Load dataset matrix from CSV.
 """
 function load_dataset_csv(path::AbstractString)
     df = CSV.read(path, DataFrame)
@@ -26,19 +38,34 @@ function load_dataset_csv(path::AbstractString)
     t_col = get(name_map, "t", nothing)
     a_col = get(name_map, "a", nothing)
 
-    if tau_col === nothing || t_col === nothing || a_col === nothing
-        @assert size(df, 2) >= 3 "CSV must contain tau, T, A columns or at least three columns."
-        return Matrix{Float64}(df[:, 1:3])
+    if tau_col === nothing
+        @assert size(df, 2) >= 2 "CSV must contain at least two columns."
+        return Matrix{Float64}(df)
     end
 
-    return Matrix{Float64}(select(df, tau_col, t_col, a_col))
+    selected = [tau_col]
+    if t_col !== nothing && t_col in cols
+        push!(selected, t_col)
+    end
+    if a_col !== nothing && a_col in cols
+        push!(selected, a_col)
+    end
+
+    for c in cols
+        if !(c in selected)
+            push!(selected, c)
+        end
+    end
+
+    reordered_df = select(df, selected)
+    return Matrix{Float64}(reordered_df)
 end
 
 """
-Save dataset matrix [tau, T, A] to HDF5.
+Save dataset matrix to HDF5.
 """
 function save_dataset_h5(path::AbstractString, data::AbstractMatrix{<:Real})
-    @assert size(data, 2) == 3 "Dataset must have columns [tau, T, A]."
+    @assert size(data, 2) >= 2 "Dataset must have at least columns [tau, feature1]."
     h5open(path, "w") do f
         f["dataset"] = Matrix{Float64}(data)
     end
@@ -46,13 +73,13 @@ function save_dataset_h5(path::AbstractString, data::AbstractMatrix{<:Real})
 end
 
 """
-Load dataset matrix [tau, T, A] from HDF5.
+Load dataset matrix from HDF5.
 """
 function load_dataset_h5(path::AbstractString)
     return h5open(path, "r") do f
         @assert haskey(f, "dataset") "HDF5 file must contain /dataset"
         data = read(f["dataset"])
-        @assert size(data, 2) == 3 "Dataset must have columns [tau, T, A]."
+        @assert size(data, 2) >= 2 "Dataset must have at least columns [tau, feature1]."
         return Matrix{Float64}(data)
     end
 end
@@ -61,7 +88,7 @@ end
 Save dataset using native Julia serialization (.jls).
 """
 function save_dataset_jls(path::AbstractString, data::AbstractMatrix{<:Real})
-    @assert size(data, 2) == 3 "Dataset must have columns [tau, T, A]."
+    @assert size(data, 2) >= 2 "Dataset must have at least columns [tau, feature1]."
     open(path, "w") do io
         serialize(io, Matrix{Float64}(data))
     end
@@ -75,7 +102,7 @@ function load_dataset_jls(path::AbstractString)
     return open(path, "r") do io
         data = deserialize(io)
         @assert data isa AbstractMatrix "Serialized object must be a matrix."
-        @assert size(data, 2) == 3 "Dataset must have columns [tau, T, A]."
+        @assert size(data, 2) >= 2 "Dataset must have at least columns [tau, feature1]."
         return Matrix{Float64}(data)
     end
 end
