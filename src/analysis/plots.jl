@@ -1043,7 +1043,10 @@ end
 #
 
 
-function plot_lid_dimension(dataset::AbstractMatrix{<:Real}, k::Int)
+function plot_lid_dimension(
+        dataset::AbstractMatrix{<:Real},
+        #k::Int
+    )
     set_publication_theme()
 
     palette = Makie.theme(:Palette).color[]
@@ -1057,12 +1060,16 @@ function plot_lid_dimension(dataset::AbstractMatrix{<:Real}, k::Int)
     k_range = 1:10:100
     for (idx, current_k) in enumerate(k_range)
         taus, lid, _, _ = scan_intrinsic_dimensions(dataset, k = current_k)
+
         lines!(
             ax, taus, lid,
             color = palette[idx],
             linewidth = 2.5,
-            label = L"k = %$current_k"
+            label = latexstring("k = ", current_k)
         )
+
+        # println("τ = $(taus[idx]), LID = $(lid[idx])")
+        # println("Obliczony LID dla k = $current_k: ", lid)
     end
     return fig
 end

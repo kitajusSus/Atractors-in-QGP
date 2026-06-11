@@ -24,7 +24,7 @@ function lle(X::AbstractMatrix{T}; k::Int = 10, d::Int = 2, kdtree = nothing) wh
     if isnothing(kdtree)
         kdtree = KDTree(X)
     end
-    
+
     idxs, _ = knn(kdtree, X, k + 1)
 
     for i in 1:N
@@ -33,7 +33,7 @@ function lle(X::AbstractMatrix{T}; k::Int = 10, d::Int = 2, kdtree = nothing) wh
         Z = X[:, neighbors] .- X[:, i]
         C = Z' * Z
         C += I(length(neighbors)) * 1.0e-3 * tr(C)
-        
+
         w = C \ ones(T, length(neighbors))
         w ./= sum(w)
 
@@ -45,14 +45,13 @@ function lle(X::AbstractMatrix{T}; k::Int = 10, d::Int = 2, kdtree = nothing) wh
     W = sparse(I_idx, J_idx, V, N, N)
 
     M = (I - W)' * (I - W)
-    
-    # Implement Shift-and-Invert via Cholesky for KrylovKit to converge stably on smallest eigenvalues
+
     sigma = -1.0e-5
     F = cholesky(Symmetric(M - sigma * I))
     inv_f = x -> F \ x
-    
-    _, vecs, _ = eigsolve(inv_f, N, d + 1, :LM; ishermitian=true, maxiter=300, tol=1.0e-5)
-    
+
+    _, vecs, _ = eigsolve(inv_f, N, d + 1, :LM; ishermitian = true, maxiter = 300, tol = 1.0e-5)
+
     return reduce(hcat, vecs[2:(d + 1)])
 end
 
@@ -118,7 +117,7 @@ function lle_spectrum(X; k = 10, kdtree = nothing, nλ = 10)
     if isnothing(kdtree)
         kdtree = KDTree(X)
     end
-    
+
     idxs, _ = knn(kdtree, X, k + 1)
 
     for i in 1:N
@@ -143,8 +142,8 @@ function lle_spectrum(X; k = 10, kdtree = nothing, nλ = 10)
     F = cholesky(Symmetric(M - sigma * I))
     inv_f = x -> F \ x
 
-    vals_inv, _, _ = eigsolve(inv_f, N, nλ, :LM; ishermitian=true, maxiter=300, tol=1.0e-5)
-    
+    vals_inv, _, _ = eigsolve(inv_f, N, nλ, :LM; ishermitian = true, maxiter = 300, tol = 1.0e-5)
+
     vals = (1 ./ real(vals_inv)) .+ sigma
     return sort(vals)
 end
