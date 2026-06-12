@@ -4,6 +4,16 @@ using HDF5
 using Serialization
 
 
+function attractor_data(model::AbstractHydroModel; tau_max = 5.0, krok = 0.01)
+    tspan_attr = (0.01, tau_max)
+
+    ic_attr = [2.0, 0.0]
+    sol_attr = solve_hydro(model, ic_attr, tspan_attr; saveat = krok)
+    attractor_matrix = build_dataset([sol_attr])
+
+    return attractor_matrix
+end
+
 """
 Save dataset matrix to CSV.
 """
@@ -19,7 +29,7 @@ function save_dataset_csv(path::AbstractString, data::AbstractMatrix{<:Real})
         push!(col_names, :A)
     end
     for i in 4:n_cols
-        push!(col_names, Symbol("feature$(i-1)"))
+        push!(col_names, Symbol("feature$(i - 1)"))
     end
     df = DataFrame(data, col_names)
     CSV.write(path, df)

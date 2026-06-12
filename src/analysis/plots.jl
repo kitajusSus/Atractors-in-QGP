@@ -12,7 +12,7 @@ using LaTeXStrings
 
 """
 function set_publication_theme(;
-        cmap = :davos,         # :davos, :lajolla, :devon, :haline, :phase
+        cmap = :devon,         # :davos, :lajolla, :devon, :haline, :phase
         n_colors = 25,         #
         bg_color = RGBf(0.98, 0.98, 0.98)
     )
@@ -81,8 +81,8 @@ function set_publication_theme(;
             ),
             Scatter = (
                 markersize = 10,
-                strokewidth = 0.5,
-                strokecolor = :black,
+                strokewidth = 0.3,
+                strokecolor = :white,
             ),
 
             Palette = (
@@ -139,24 +139,102 @@ function resolve_def(def)
     error("Axis definition must be Symbol or Tuple(label, function).")
 end
 
-function get_data(dataset::AbstractMatrix{<:Real}, t::Real, xdef, ydef)
-    @assert size(dataset, 2) >= 2 "Dataset must have at least columns [tau, feature1]."
+function get_data(dataset::AbstractMatrix{<:Real}, t::Real, xdef, ydef; is_attractor = false)
     xlbl, xfn = resolve_def(xdef)
     ylbl, yfn = resolve_def(ydef)
 
-    rows = findall(isapprox.(dataset[:, 1], t; atol = 1.0e-8))
-    if isempty(rows)
-        nearest = argmin(abs.(dataset[:, 1] .- t))
-        rows = findall(isapprox.(dataset[:, 1], dataset[nearest, 1]; atol = 1.0e-8))
+    if is_attractor
+        selected = dataset
+    else
+        rows = findall(isapprox.(dataset[:, 1], t; atol = 1.0e-8))
+        if isempty(rows)
+            nearest = argmin(abs.(dataset[:, 1] .- t))
+            rows = findall(isapprox.(dataset[:, 1], dataset[nearest, 1]; atol = 1.0e-8))
+        end
+        selected = dataset[rows, :]
     end
-
-    selected = dataset[rows, :]
 
     x = [xfn(selected[i, :], selected) for i in 1:size(selected, 1)]
     y = [yfn(selected[i, :], selected) for i in 1:size(selected, 1)]
 
     return (x = x, y = y, xlabel = xlbl, ylabel = ylbl)
 end
+
+
+"""
+    temperature_grid(T_values::AbstractVector{<:Real}, n::Integer)
+
+Construct a uniform temperature grid of length `n` from 95% of the minimum
+to 105% of the maximum of `T_values`.
+"""
+function temperature_grid(T_values::AbstractVector{<:Real}, n::Integer)
+    return range(
+        minimum(T_values) * 0.95,
+        maximum(T_values) * 1.05;
+        length = n
+    )
+end
+
+"""
+    build_virtual_state(dataset::AbstractMatrix{S}, attractor_state::AbstractVector{<:Real}, τ::Real, T::Real) where S
+
+Build a virtual hydrodynamic state vector `s = (τ, T, A*, ...)` using proper time `τ`,
+temperature `T`, and attractor variables.
+"""
+function build_virtual_state(dataset::AbstractMatrix{S}, attractor_state::AbstractVector{<:Real}, τ::Real, T::Real) where {S}
+    state = Vector{S}(undef, size(dataset, 2))
+    state[1] = τ
+    state[2] = T
+    state[3] = attractor_state[3]
+
+    if length(state) > 3
+        state[4:end] .= @view attractor_state[4:end]
+    end
+    return state
+end
+
+"""
+    get_attractor_line_for_frame(dataset::AbstractMatrix{<:Real}, attractor::AbstractMatrix{<:Real}, τ::Real, xdef, ydef; n_points=150)
+"""
+function get_attractor_line_for_frame(
+        dataset::AbstractMatrix{<:Real},
+        attractor::AbstractMatrix{<:Real},
+        τ::Real,
+        xdef,
+        ydef;
+        n_points::Int = 150
+    )
+    _, xmap = resolve_def(xdef)
+    _, ymap = resolve_def(ydef)
+
+    # Extract time slice as a view
+    _, slice = get_tau_slice(dataset, τ; atol = 1.0e-8, feature_cols = 1:size(dataset, 2), nearest = true)
+
+    τ_match = slice[1, 1]
+    T_values = @view slice[:, 2]
+    T_grid = temperature_grid(T_values, n_points)
+
+    # Similarity coordinate for the attractor: ω = τ * T
+    ω_attractor = attractor[:, 1] .* attractor[:, 2]
+
+    x = Vector{Float64}(undef, n_points)
+    y = Vector{Float64}(undef, n_points)
+
+    for (i, T) in enumerate(T_grid)
+        ω = τ_match * T
+
+        attractor_idx = argmin(abs.(ω_attractor .- ω))
+        attractor_state = @view attractor[attractor_idx, :]
+
+        state = build_virtual_state(dataset, attractor_state, τ_match, T)
+
+        x[i] = xmap(state, slice)
+        y[i] = ymap(state, slice)
+    end
+
+    return (; x, y)
+end
+
 
 """
     get_limits(dataset::AbstractMatrix{<:Real}, def; times = nothing, padding = 0.05)
@@ -256,9 +334,17 @@ function _split_trajectories(dataset::AbstractMatrix{<:Real})
     return ranges
 end
 
-function plot_phase_space_grid(dataset::AbstractMatrix{<:Real}, times, xdef, ydef; limits = nothing)
-    set_publication_theme(cmap = :haline)
+function plot_phase_space_grid(
+        dataset::AbstractMatrix{<:Real},
+        times,
+        xdef,
+        ydef;
+        limits = nothing,
+        attractor = nothing
+    )
+    set_publication_theme()
     palette = Makie.theme(:Palette).color[]
+
     n = length(times)
     ncols = min(3, n)
     nrows = ceil(Int, n / ncols)
@@ -269,6 +355,7 @@ function plot_phase_space_grid(dataset::AbstractMatrix{<:Real}, times, xdef, yde
     for (i, t) in enumerate(times)
         row = (i - 1) ÷ ncols + 1
         col = (i - 1) % ncols + 1
+
         d = get_data(dataset, t, xdef, ydef)
 
         ax = Axis(
@@ -276,10 +363,19 @@ function plot_phase_space_grid(dataset::AbstractMatrix{<:Real}, times, xdef, yde
             title = L"\tau = %$(round(t, digits=2))\,\mathrm{fm}/c",
             xlabel = d.xlabel,
             ylabel = d.ylabel,
-
             limits = lims
         )
-        scatter!(ax, d.x, d.y; markersize = 3.0, color = palette[2], strokecolor = :black, strokewidth = 0.5)
+        # musi być najpiew by był pod kropkami
+        # jeśli jest dany jeśnie nie to nie
+        if !isnothing(attractor)
+            attr_line = get_attractor_line_for_frame(dataset, attractor, t, xdef, ydef)
+            lines!(ax, attr_line.x, attr_line.y; color = :red, linewidth = 1.0, label = "Atraktor")
+        end
+        scatter!(
+            ax, d.x, d.y; markersize = 3, color = (palette[7], 0.5),
+            strokecolor = (palette[6], 0.4),
+            strokewidth = 0.1
+        )
     end
     return fig
 end
@@ -1204,5 +1300,102 @@ function plot_lle_spectrum_scan_analysis(
     end
 
     axislegend(ax, position = :rt, nbanks = 2)
+    return fig
+end
+
+
+function plot_local_pca(
+        dataset_loaded::AbstractMatrix{<:Real};
+        n_slices::Int = 15,
+        tablica_k::Vector{Int} = [10, 20, 30, 40],
+        feature_cols::AbstractVector{<:Integer} = collect(2:size(dataset_loaded, 2))
+    )
+    set_publication_theme()
+
+    fig = Figure(size = (950, 600))
+    ax = Axis(
+        fig[1, 1],
+        title = L"\text{Wpływ parametru } K \text{ na działanie Algorytmu L-PCA jako  }   f(\tau)",
+        xlabel = L"\tau\,[\mathrm{fm}/c]",
+        ylabel = L"\text{Średni wymiar lokalny}",
+        xticks = 0:0.25:maximum(dataset_loaded[:, 1]),
+        yticks = 1:0.1:2,
+
+        xautolimitmargin = (0.02, 0.05),
+        yautolimitmargin = (0.05, 0.05)
+    )
+
+    # palette = Makie.theme(:Palette).color[]
+    palette = [:crimson, :dodgerblue, :forestgreen, :darkorange, :purple]
+    for (i, k_bazowe) in enumerate(tablica_k)
+        k_zmienione = k_bazowe * 2
+
+        tau_vals, mean_k1, mean_k2, _ = compute_lpca(dataset_loaded, k_bazowe, n_slices, feature_cols = feature_cols)
+
+        c = palette[mod1(i, length(palette))]
+
+        band!(
+            ax,
+            tau_vals,
+            mean_k1,
+            mean_k2;
+            color = (c, 0.25)
+        )
+
+        lines!(
+            ax,
+            tau_vals,
+            mean_k1;
+            linewidth = 2.5,
+            color = c,
+            label = L"K \in [%$(k_bazowe), %$(k_zmienione)]"
+        )
+
+        lines!(
+            ax,
+            tau_vals,
+            mean_k2;
+            linewidth = 1.0,
+            color = c,
+            linestyle = :dash
+        )
+    end
+
+    axislegend(ax, position = :rt)
+
+    return fig
+end
+
+
+function plot_map_lpca(
+        dataset::AbstractMatrix{<:Real};
+        zakres_K::AbstractVector{<:Integer} = [10, 20, 40, 80],
+        n_slices::Int = 15,
+        feature_cols::AbstractVector{<:Integer} = collect(2:size(dataset, 2))
+    )
+
+    set_publication_theme()
+    palette = Makie.theme(:Palette).color[]
+
+    results = [compute_lpca(dataset, k, n_slices; feature_cols) for k in zakres_K]
+    tau_vals = results[1][1]
+    dim_matrix = reduce(hcat, [r[2] for r in results])
+
+    fig = Figure(size = (950, 600))
+    ax = Axis(
+        fig[1, 1],
+        title = L"\text{Mapa lokalnych wymiarów w funkcji } \tau \text{ i } K",
+        xlabel = L"\tau\,[\mathrm{fm}/c]",
+        ylabel = L"K",
+        xticks = 0:0.25:maximum(tau_vals),
+        yticks = (eachindex(zakres_K), string.(zakres_K)),
+    )
+
+    hm = heatmap!(
+        ax, tau_vals, eachindex(zakres_K), dim_matrix;
+        colormap = palette,
+    )
+    Colorbar(fig[1, 2], hm; label = L"\text{Lokalny wymiar}")
+
     return fig
 end

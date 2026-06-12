@@ -31,7 +31,8 @@ include("simulation/trajectories.jl")
 
 include("analysis/lle.jl")
 export run_lle_per_time, lle, run_lle_for_selected_taus, lle_spectrum, lle_spectrum_over_k, spectrum_statistics, scan_lle_spectrum
-
+include("analysis/lpca.jl")
+export compute_lpca, normalizuj_max
 include("analysis/pca.jl")
 include("analysis/dimension.jl")
 include("analysis/plots.jl")
@@ -40,6 +41,7 @@ export plot_lle_results_for_taus, plot_lle_spectrum_analysis, plot_lle_spectrum_
 export plot_lle_spectrum_statistics_grid
 export plot_pinn_deff_evolution
 export plot_phase_space_evolution, plot_phase_space_evolution_3d
+export plot_local_pca
 include("analysis/fit_polynomials.jl")
 export compute_polynomial_lle
 
@@ -65,7 +67,7 @@ export pinn_dimensionality_workflow
 # Data-driven Neural Jacobians
 export normalize_generic, build_generic_network, compute_data_jacobian
 include("io/data_io.jl")
-
+export attractor_data
 # idl twonn
 include("analysis/intrinsic_dimension.jl")
 export estimate_lid, estimate_twonn, estimate_dimension, scan_intrinsic_dimensions
@@ -88,6 +90,7 @@ export save_dataset_csv, load_dataset_csv, save_dataset_h5, load_dataset_h5
 export save_dataset_jls, load_dataset_jls, save_dataset, load_dataset
 export set_publication_theme, resolve_def, get_data, get_limits
 export plot_phase_space_grid, plot_thermodynamics_evolution, plot_pca_summary, plot_pca_evr_over_time, plot_twonn, plot_lid_dimension
+export plot_map_lpca
 export run_main
 
 

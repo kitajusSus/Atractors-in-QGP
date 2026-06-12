@@ -159,34 +159,44 @@ function run_pca_kernel(
 end
 
 """
-    get_tau_slice(taus::AbstractVector{<:Real}, tau::Real; atol::Real=1e-8)
+    get_tau_slice(taus::AbstractVector{<:Real}, tau::Real; atol::Real=1e-8, nearest::Bool=true)
 
 Return indices of elements in `taus` matching `tau` within `atol`.
-
-This helper is useful when you already extracted the first column of a dataset.
+If no elements match and `nearest` is `true`, find the nearest element and return its matches.
 """
-function get_tau_slice(taus::AbstractVector{<:Real}, tau::Real; atol::Real = 1.0e-8)
-    return findall(isapprox.(taus, tau; atol = atol))
+function get_tau_slice(taus::AbstractVector{<:Real}, tau::Real; atol::Real = 1.0e-8, nearest::Bool = true)
+    idx = findall(isapprox.(taus, tau; atol = atol))
+    if isempty(idx) && nearest
+        tau_nearest = taus[argmin(abs.(taus .- tau))]
+        idx = findall(isapprox.(taus, tau_nearest; atol = atol))
+    end
+    return idx
 end
 
 """
-    get_tau_slice(dataset::AbstractMatrix{<:Real}, tau::Real; atol::Real=1e-8)
+    get_tau_slice(dataset::AbstractMatrix{T}, tau::Real; atol::Real=1e-8, feature_cols=2:size(dataset,2), nearest::Bool=true) where T
 
 Extract rows for a given time value `tau` from a dataset structured as
 `[tau, features...]`.
 
 Returns `(idx, Xtau)` where:
 - `idx` are row indices matching `tau`
-- `Xtau` is the feature matrix for that time
+- `Xtau` is a view of the feature matrix for that time
 
-Use `feature_cols` to choose which feature columns (from `2:size(dataset,2)`) are included.
+Use `feature_cols` to choose which feature columns (from `1:size(dataset,2)`) are included.
 """
-function get_tau_slice(dataset::AbstractMatrix{<:Real}, tau::Real; atol::Real = 1.0e-8, feature_cols::AbstractVector{<:Integer} = collect(2:size(dataset, 2)))
+function get_tau_slice(
+    dataset::AbstractMatrix{T},
+    tau::Real;
+    atol::Real = 1.0e-8,
+    feature_cols = 2:size(dataset, 2),
+    nearest::Bool = true
+) where T
     @assert !isempty(feature_cols) "feature_cols must contain at least one column index."
-    @assert all(2 <= c <= size(dataset, 2) for c in feature_cols) "feature_cols must point to feature columns (2:size(dataset, 2))."
+    @assert all(1 <= c <= size(dataset, 2) for c in feature_cols) "feature_cols must point to valid columns."
 
-    idx = get_tau_slice(view(dataset, :, 1), tau; atol = atol)
-    Xtau = Matrix{Float64}(dataset[idx, feature_cols])
+    idx = get_tau_slice(view(dataset, :, 1), tau; atol = atol, nearest = nearest)
+    Xtau = @view dataset[idx, feature_cols]
     return idx, Xtau
 end
 
