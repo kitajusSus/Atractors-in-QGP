@@ -25,6 +25,12 @@ using GLMakie
     @test du[1] ≈ expected_dT atol = 1.0e-12
     @test du[2] ≈ expected_dA atol = 1.0e-12
 
+    mis_model = MISModel()
+    mis_attr = attractor_data(mis_model; tau_max = 0.03, krok = 0.01, w_min = 1.0e-4)
+    expected_mis_A0 = 6 * sqrt(mis_model.params.eta_over_s / mis_model.params.tau_pi)
+    @test all(mis_attr[:, 2] .== 1.0)
+    @test mis_attr[1, 3] ≈ expected_mis_A0 atol = 1.0e-12
+
 
     ics_default_a = generate_initial_conditions(5; T_range = (700.0, 900.0), A_range = (-1.0, 1.0))
     ics_default_b = generate_initial_conditions(5; T_range = (700.0, 900.0), A_range = (-1.0, 1.0))
@@ -215,6 +221,27 @@ using GLMakie
         @test lims[2] == xlims[2]
         @test lims[3] == ylims[1]
         @test lims[4] == ylims[2]
+
+        attractor = [
+            0.2 1.0 2.0
+            0.4 1.0 4.0
+        ]
+        same_temperature_data = [
+            0.2 1.0 0.0
+            0.2 1.0 0.0
+            0.4 1.0 0.0
+            0.4 1.0 0.0
+        ]
+        attr_02 = get_attractor_line_for_frame(
+            same_temperature_data, attractor, 0.2, :tauT, :A; n_points = 1
+        )
+        attr_04 = get_attractor_line_for_frame(
+            same_temperature_data, attractor, 0.4, :tauT, :A; n_points = 1
+        )
+        @test attr_02.x[1] ≈ 0.2
+        @test attr_04.x[1] ≈ 0.4
+        @test attr_02.y[1] ≈ 2.0
+        @test attr_04.y[1] ≈ 4.0
     end
 
     @testset "scan_dimension_from_data" begin

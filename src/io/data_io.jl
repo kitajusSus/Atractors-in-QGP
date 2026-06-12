@@ -4,14 +4,51 @@ using HDF5
 using Serialization
 
 
-function attractor_data(model::AbstractHydroModel; tau_max = 5.0, krok = 0.01)
-    tspan_attr = (0.01, tau_max)
+function attractor_data(model::AbstractHydroModel; tau_max = 5.0, krok = 0.01, temperature_unit::Symbol = :fm)
+    tspan_attr = (0.2, tau_max)
 
-    ic_attr = [2.0, 0.0]
+    ic_attr = [4, 7]
     sol_attr = solve_hydro(model, ic_attr, tspan_attr; saveat = krok)
-    attractor_matrix = build_dataset([sol_attr])
+    attractor_matrix = build_dataset([sol_attr]; temperature_unit = temperature_unit)
 
     return attractor_matrix
+end
+
+function attractor_data(
+        model::MISModel;
+        tau_max = 5.0,
+        krok = 0.01,
+        temperature_unit::Symbol = :fm,
+        w_min::Real = 1.0e-4
+    )
+    w_max = Float64(tau_max)
+    @assert w_min > 0 "w_min must be positive for the MIS attractor profile."
+    @assert w_min < w_max "w_min must be smaller than tau_max."
+    @assert krok > 0 "krok must be positive."
+
+    p = model.params
+    A0 = 6 * sqrt(p.eta_over_s / p.tau_pi)
+
+    rhs_A(u, _, w) = begin
+        A = u[1]
+        dA = 18 * (8 * p.eta_over_s - w * A - (2 / 9) * p.tau_pi * A^2) /
+            (p.tau_pi * w * (A + 12))
+        return SVector(dA)
+    end
+
+    saveat = collect(Float64(w_min):Float64(krok):w_max)
+    if saveat[end] < w_max
+        push!(saveat, w_max)
+    end
+
+    problem = ODEProblem(rhs_A, SVector(Float64(A0)), (Float64(w_min), w_max), nothing)
+    sol = solve(problem, Rodas5(); abstol = 1.0e-9, reltol = 1.0e-9, saveat = saveat)
+
+    profile = Matrix{Float64}(undef, length(sol.t), 3)
+    profile[:, 1] .= sol.t
+    profile[:, 2] .= 1.0
+    profile[:, 3] .= getindex.(sol.u, 1)
+    return profile
 end
 
 """
@@ -147,4 +184,135 @@ function load_dataset(path::AbstractString)
     else
         error("Unsupported format. Use .csv, .h5/.hdf5, or .jls")
     end
+end
+
+
+"""
+    attractor_state(attractor, τ, T, ncols)
+
+Construct a virtual system state lying on the attractor.
+"""
+function attractor_state(
+        attractor::AbstractMatrix{<:Real},
+        τ::Real,
+        T::Real,
+        ncols::Int
+    )
+    # Wykrywanie jednostek temperatury (MeV vs fm^-1) i zestrojenie zakresów omega
+    T_is_mev = T > 50.0
+    T_attractor_is_mev = (sum(attractor[:, 2]) / size(attractor, 1)) > 50.0
+
+    T_fm = T_is_mev ? T * FM_PER_MEV : T
+    omega_target = τ * T_fm
+
+    T_attractor_fm = T_attractor_is_mev ? attractor[:, 2] .* FM_PER_MEV : attractor[:, 2]
+    omega_universe = attractor[:, 1] .* T_attractor_fm
+
+    # Sortowanie pod kątem ekstrapolacji
+    p_sort = sortperm(omega_universe)
+    omega_sorted = omega_universe[p_sort]
+    attr_sorted = attractor[p_sort, :]
+
+    omega_min = omega_sorted[1]
+    omega_max = omega_sorted[end]
+
+    state = Vector{Float64}(undef, ncols)
+    state[1] = τ
+    state[2] = T
+
+    if omega_target < omega_min
+        # Ekstrapolacja dla małych omega: stała wartość początkowa
+        row = attr_sorted[1, :]
+        state[3] = row[3]
+        if ncols > 3
+            n_copy = min(ncols, size(attractor, 2))
+            state[4:n_copy] .= row[4:n_copy]
+            if ncols > n_copy
+                state[(n_copy + 1):end] .= 0.0
+            end
+        end
+    elseif omega_target > omega_max
+        # Ekstrapolacja dla dużych omega: spadek Navier-Stokesa A ~ 1/omega
+        A_max = attr_sorted[end, 3]
+        state[3] = A_max * (omega_max / omega_target)
+        if ncols > 3
+            row = attr_sorted[end, :]
+            n_copy = min(ncols, size(attractor, 2))
+            state[4:n_copy] .= row[4:n_copy]
+            if ncols > n_copy
+                state[(n_copy + 1):end] .= 0.0
+            end
+        end
+    else
+        # Dopasowanie wewnątrz zakresu
+        idx = argmin(abs.(omega_sorted .- omega_target))
+        row = attr_sorted[idx, :]
+        state[3] = row[3]
+        if ncols > 3
+            n_copy = min(ncols, size(attractor, 2))
+            state[4:n_copy] .= row[4:n_copy]
+            if ncols > n_copy
+                state[(n_copy + 1):end] .= 0.0
+            end
+        end
+    end
+
+    return state
+end
+
+
+"""
+    get_attractor_line(
+        dataset,
+        attractor,
+        τ,
+        xdef,
+        ydef;
+        n_points=150
+    )
+
+Return coordinates of the attractor line projected onto
+the chosen observables.
+"""
+function get_attractor_line(
+        dataset::AbstractMatrix{<:Real},
+        attractor::AbstractMatrix{<:Real},
+        τ::Real,
+        xdef,
+        ydef;
+        n_points::Int = 150
+    )
+
+    _, xmap = resolve_def(xdef)
+    _, ymap = resolve_def(ydef)
+
+    _, slice = get_tau_slice(dataset, τ; feature_cols = 1:size(dataset, 2))
+
+    Tmin = minimum(slice[:, 2])
+    Tmax = maximum(slice[:, 2])
+
+    Tgrid = range(
+        Tmin * 0.95,
+        Tmax * 1.05;
+        length = n_points
+    )
+
+    x = Vector{Float64}(undef, n_points)
+    y = Vector{Float64}(undef, n_points)
+
+    for (i, T) in enumerate(Tgrid)
+
+        state = attractor_state(
+            attractor,
+            τ,
+            T,
+            size(dataset, 2)
+        )
+
+        x[i] = xmap(state, slice)
+        y[i] = ymap(state, slice)
+
+    end
+
+    return (; x, y)
 end

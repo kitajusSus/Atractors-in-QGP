@@ -12,7 +12,7 @@ using LaTeXStrings
 
 """
 function set_publication_theme(;
-        cmap = :devon,         # :davos, :lajolla, :devon, :haline, :phase
+        cmap = :davos,         # :davos, :lajolla, :devon, :haline, :phase
         n_colors = 25,         #
         bg_color = RGBf(0.98, 0.98, 0.98)
     )
@@ -168,9 +168,16 @@ Construct a uniform temperature grid of length `n` from 95% of the minimum
 to 105% of the maximum of `T_values`.
 """
 function temperature_grid(T_values::AbstractVector{<:Real}, n::Integer)
+    @assert n > 0 "temperature grid must contain at least one point."
+    Tmin = minimum(T_values) * 0.95
+    Tmax = maximum(T_values) * 1.05
+    if n == 1
+        return [(Tmin + Tmax) / 2]
+    end
+
     return range(
-        minimum(T_values) * 0.95,
-        maximum(T_values) * 1.05;
+        Tmin,
+        Tmax;
         length = n
     )
 end
@@ -193,48 +200,79 @@ function build_virtual_state(dataset::AbstractMatrix{S}, attractor_state::Abstra
     return state
 end
 
+function interpolate_attractor_state(
+        dataset::AbstractMatrix{S},
+        attractor::AbstractMatrix{<:Real},
+        τ::Real,
+        T::Real
+    ) where {S}
+    omega = attractor[:, 1] .* attractor[:, 2]
+    order = sortperm(omega)
+    omega_sorted = omega[order]
+    attr_sorted = attractor[order, :]
+
+    target = τ * T
+    state = Vector{S}(undef, size(dataset, 2))
+    state[1] = τ
+    state[2] = T
+
+    n_copy = min(size(dataset, 2), size(attractor, 2))
+    if target <= omega_sorted[1]
+        state[3:n_copy] .= attr_sorted[1, 3:n_copy]
+    elseif target >= omega_sorted[end]
+        state[3:n_copy] .= attr_sorted[end, 3:n_copy]
+    else
+        hi = searchsortedfirst(omega_sorted, target)
+        lo = hi - 1
+        weight = (target - omega_sorted[lo]) / (omega_sorted[hi] - omega_sorted[lo])
+        state[3:n_copy] .= (1 - weight) .* attr_sorted[lo, 3:n_copy] .+
+            weight .* attr_sorted[hi, 3:n_copy]
+    end
+
+    if size(dataset, 2) > n_copy
+        state[(n_copy + 1):end] .= zero(S)
+    end
+    return state
+end
+
 """
-    get_attractor_line_for_frame(dataset::AbstractMatrix{<:Real}, attractor::AbstractMatrix{<:Real}, τ::Real, xdef, ydef; n_points=150)
+    get_attractor_line_for_frame(dataset::AbstractMatrix{<:Real}, attractor_universe::AbstractMatrix{<:Real}, t::Real, xdef, ydef; n_points=150)
+
+Oblicza dokładne współrzędne linii teoretycznego atraktora dla wybranej klatki czasowej `t`,
+dopasowując zakres i ewentualną normalizację do punktów numerycznych z symulacji (`dataset`).
 """
 function get_attractor_line_for_frame(
         dataset::AbstractMatrix{<:Real},
-        attractor::AbstractMatrix{<:Real},
-        τ::Real,
+        attractor_universe::AbstractMatrix{<:Real},
+        t::Real,
         xdef,
         ydef;
         n_points::Int = 150
     )
-    _, xmap = resolve_def(xdef)
-    _, ymap = resolve_def(ydef)
+    _, xfn = resolve_def(xdef)
+    _, yfn = resolve_def(ydef)
 
-    # Extract time slice as a view
-    _, slice = get_tau_slice(dataset, τ; atol = 1.0e-8, feature_cols = 1:size(dataset, 2), nearest = true)
+    _, cloud_slice = get_tau_slice(
+        dataset,
+        t;
+        atol = 1.0e-8,
+        feature_cols = 1:size(dataset, 2),
+        nearest = true,
+    )
+    τ = cloud_slice[1, 1]
 
-    τ_match = slice[1, 1]
-    T_values = @view slice[:, 2]
-    T_grid = temperature_grid(T_values, n_points)
-
-    # Similarity coordinate for the attractor: ω = τ * T
-    ω_attractor = attractor[:, 1] .* attractor[:, 2]
-
+    T_grid = temperature_grid(@view(cloud_slice[:, 2]), n_points)
     x = Vector{Float64}(undef, n_points)
     y = Vector{Float64}(undef, n_points)
 
     for (i, T) in enumerate(T_grid)
-        ω = τ_match * T
-
-        attractor_idx = argmin(abs.(ω_attractor .- ω))
-        attractor_state = @view attractor[attractor_idx, :]
-
-        state = build_virtual_state(dataset, attractor_state, τ_match, T)
-
-        x[i] = xmap(state, slice)
-        y[i] = ymap(state, slice)
+        state = interpolate_attractor_state(dataset, attractor_universe, τ, T)
+        x[i] = xfn(state, cloud_slice)
+        y[i] = yfn(state, cloud_slice)
     end
 
     return (; x, y)
 end
-
 
 """
     get_limits(dataset::AbstractMatrix{<:Real}, def; times = nothing, padding = 0.05)
@@ -340,7 +378,8 @@ function plot_phase_space_grid(
         xdef,
         ydef;
         limits = nothing,
-        attractor = nothing
+        attractor = nothing,
+        attractor_points::Int = 150
     )
     set_publication_theme()
     palette = Makie.theme(:Palette).color[]
@@ -368,12 +407,19 @@ function plot_phase_space_grid(
         # musi być najpiew by był pod kropkami
         # jeśli jest dany jeśnie nie to nie
         if !isnothing(attractor)
-            attr_line = get_attractor_line_for_frame(dataset, attractor, t, xdef, ydef)
+            attr_line = get_attractor_line_for_frame(
+                dataset,
+                attractor,
+                t,
+                xdef,
+                ydef;
+                n_points = attractor_points,
+            )
             lines!(ax, attr_line.x, attr_line.y; color = :red, linewidth = 1.0, label = "Atraktor")
         end
         scatter!(
-            ax, d.x, d.y; markersize = 3, color = (palette[7], 0.5),
-            strokecolor = (palette[6], 0.4),
+            ax, d.x, d.y; markersize = 3, color = (palette[4], 0.5),
+            strokecolor = (palette[2], 0.4),
             strokewidth = 0.1
         )
     end

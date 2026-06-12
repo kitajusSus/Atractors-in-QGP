@@ -186,12 +186,12 @@ Returns `(idx, Xtau)` where:
 Use `feature_cols` to choose which feature columns (from `1:size(dataset,2)`) are included.
 """
 function get_tau_slice(
-    dataset::AbstractMatrix{T},
+    dataset::AbstractMatrix{<:Real},
     tau::Real;
     atol::Real = 1.0e-8,
     feature_cols = 2:size(dataset, 2),
     nearest::Bool = true
-) where T
+)
     @assert !isempty(feature_cols) "feature_cols must contain at least one column index."
     @assert all(1 <= c <= size(dataset, 2) for c in feature_cols) "feature_cols must point to valid columns."
 
