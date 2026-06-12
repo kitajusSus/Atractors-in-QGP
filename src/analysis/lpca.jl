@@ -63,8 +63,8 @@ function compute_lpca(
         feature_cols::AbstractVector{<:Integer} = collect(2:size(dataset_loadet, 2))
     )
     taus = sort(unique(dataset_loadet[:, 1]))
-    step = max(1, length(taus) ÷ n_slices)
-    wybrane_tau = taus[1:step:end][1:n_slices]
+    idxs = round.(Int, range(1, length(taus), length = n_slices))
+    wybrane_tau = taus[idxs]
 
     # k_zmienione = round(Int, k_bazowe * 2)
     tolerancja = 0.01
@@ -75,7 +75,7 @@ function compute_lpca(
     tau_values = Float64[]
     mean_k1_values = Float64[]
     # mean_k2_values = Float64[]
-
+    std_k1_array = Float64[]
     for tau in wybrane_tau
         idx, X_tau = get_tau_slice(dataset_loadet, tau; feature_cols = feature_cols)
         X_norm = normalizuj_max(X_tau)
@@ -84,6 +84,7 @@ function compute_lpca(
         # dims_k2 = dims(X_norm; k = k_zmienione, tol = tolerancja)
 
         mean_k1 = mean(dims_k1)
+        std_k1 = std(dims_k1)
         # mean_k2 = mean(dims_k2)
 
         # diff_percent = mean_k1 > 0 ? ((mean_k2 - mean_k1) / mean_k1) * 100 : 0.0
@@ -92,7 +93,8 @@ function compute_lpca(
         # push!(procenty, diff_percent)
         push!(tau_values, tau)
         push!(mean_k1_values, mean_k1)
+        push!(std_k1_array, std_k1)
         # push!(mean_k2_values, mean_k2)
     end
-    return tau_values, mean_k1_values #, mean_k2_values, procenty
+    return tau_values, mean_k1_values, std_k1_array #, mean_k2_values, procenty
 end
