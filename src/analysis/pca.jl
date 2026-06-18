@@ -192,12 +192,33 @@ function get_tau_slice(
     feature_cols = 2:size(dataset, 2),
     nearest::Bool = true
 )
-    @assert !isempty(feature_cols) "feature_cols must contain at least one column index."
-    @assert all(1 <= c <= size(dataset, 2) for c in feature_cols) "feature_cols must point to valid columns."
+    @assert !isempty(feature_cols) "feature_cols must contain at least one column index or symbol."
 
     idx = get_tau_slice(view(dataset, :, 1), tau; atol = atol, nearest = nearest)
-    Xtau = @view dataset[idx, feature_cols]
-    return idx, Xtau
+
+    if feature_cols isa AbstractVector{<:Integer} || (feature_cols isa AbstractRange && eltype(feature_cols) <: Integer)
+        @assert all(1 <= c <= size(dataset, 2) for c in feature_cols) "feature_cols must point to valid columns."
+        Xtau = @view dataset[idx, feature_cols]
+        return idx, Xtau
+    else
+        selected = dataset[idx, :]
+        n_samples = size(selected, 1)
+        n_features = length(feature_cols)
+        Xtau = Matrix{Float64}(undef, n_samples, n_features)
+        
+        for (j, col) in enumerate(feature_cols)
+            if col isa Integer
+                @assert 1 <= col <= size(dataset, 2) "feature column index $col out of bounds."
+                Xtau[:, j] .= selected[:, col]
+            else
+                _, fn = resolve_def(col)
+                for i in 1:n_samples
+                    Xtau[i, j] = fn(selected[i, :], selected)
+                end
+            end
+        end
+        return idx, Xtau
+    end
 end
 
 """
@@ -227,7 +248,7 @@ function run_pca_per_time(
         method::Symbol = :minmax,
         gamma::Float64 = 1.0,
         atol::Real = 1.0e-8,
-        feature_cols::Union{AbstractVector{<:Integer}, Nothing} = nothing,
+        feature_cols = nothing,
     )
     cols = isnothing(feature_cols) ? collect(2:size(dataset, 2)) : feature_cols
     @assert size(dataset, 2) >= 2 "Dataset must contain at least [tau, features...]."
@@ -277,7 +298,7 @@ function run_pca_for_tau(
         method::Symbol = :minmax,
         gamma::Float64 = 1.0,
         atol::Real = 1.0e-8,
-        feature_cols::Union{AbstractVector{<:Integer}, Nothing} = nothing,
+        feature_cols = nothing,
     )
     cols = isnothing(feature_cols) ? collect(2:size(dataset, 2)) : feature_cols
     _, Xtau = get_tau_slice(dataset, tau; atol = atol, feature_cols = cols)
@@ -336,7 +357,7 @@ function run_evolution_pca_workflow(
         n_components::Integer = 2,
         method::Symbol = :minmax,
         gamma::Float64 = 1.0,
-        feature_cols::AbstractVector{<:Integer} = [2, 3],
+        feature_cols::AbstractVector = [2, 3],
         atol::Real = 1.0e-8,
         parallel::Symbol = :threads,
         seed::Integer = 5,

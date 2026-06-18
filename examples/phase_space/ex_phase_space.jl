@@ -23,6 +23,7 @@ function generuj_wykresy_przestrzeni()
     theme_QGP()
     paleta = Makie.theme(:Palette).color[]
 
+
     fig1 = Figure(size = (850, 600))
     ax1_2d = Axis(fig1[1, 1], xlabel = L"x", ylabel = L"v", title = L"\text{Naiwna przestrzeń fazowa} \; 2D \; (c = 0)")
 
@@ -35,10 +36,10 @@ function generuj_wykresy_przestrzeni()
         x_pts = [u[1] for u in sol.u]
         v_pts = [u[2] for u in sol.u]
 
-        lines!(ax1_2d, x_pts, v_pts, color = :black, linewidth = 9)
-        lines!(ax1_2d, x_pts, v_pts, color = paleta[1 + i], linewidth = 5)
+        lines!(ax1_2d, x_pts, v_pts, color = :gray, linewidth = 9)
+        lines!(ax1_2d, x_pts, v_pts, color = paleta[5 * i], linewidth = 8)
 
-        lines!(ax1_3d, x_pts, v_pts, sol.t, color = paleta[i + 1], linewidth = 5)
+        lines!(ax1_3d, x_pts, v_pts, sol.t, color = paleta[i * 5], linewidth = 7)
     end
 
     fig3 = Figure(size = (850, 600))
@@ -53,16 +54,16 @@ function generuj_wykresy_przestrzeni()
         x_pts = [u[1] for u in sol.u]
         v_pts = [u[2] for u in sol.u]
 
-        lines!(ax2_2d, x_pts, v_pts, color = :black, linewidth = 8)
-        lines!(ax2_2d, x_pts, v_pts, color = paleta[2 * i], linewidth = 4)
+        lines!(ax2_2d, x_pts, v_pts, color = :grey, linewidth = 10)
+        lines!(ax2_2d, x_pts, v_pts, color = paleta[5 * i], linewidth = 8)
 
-        lines!(ax2_3d, x_pts, v_pts, sol.t, color = paleta[i * 2], colormap = paleta, linewidth = 5)
+        lines!(ax2_3d, x_pts, v_pts, sol.t, color = paleta[i * 5], colormap = paleta, linewidth = 7)
     end
 
-    save("plots/ex_phase_space_2d_c0.png", fig1)
-    save("plots/ex_phase_space_3d_c0.png", fig2)
-    save("plots/ex_phase_space_2d_c05.png", fig3)
-    save("plots/ex_phase_space_3d_c05.png", fig4)
+    save("plots/ex_phase_space_2d_c0.pdf", fig1)
+    save("plots/ex_phase_space_3d_c0.pdf", fig2)
+    save("plots/ex_phase_space_2d_c05.pdf", fig3)
+    save("plots/ex_phase_space_3d_c05.pdf", fig4)
 
     return fig1, fig2, fig3, fig4
 end

@@ -129,4 +129,36 @@ like terms and applying basic algebraic rules.
 
 
 ```julia
+
 # ...
+
+```
+
+
+# Jak wygenerować wykres dla Attractora  hydrodynamicznego 
+
+$$A(w)$$ 
+
+
+```julia 
+mis = load_dataset(....)
+
+
+using AtractorsQGP
+using GLMakie  
+w_max = 2.5 
+attr = attractor_data(MISModel(), tau_max = w_max, krok = 0.005)
+
+fig = plot_attractor(
+    mis; 
+    attractor = attr, 
+    n_trajectories = 60
+)
+
+# save("atraktor_bjorken_flow.png", fig)
+
+
+
+```
+
+

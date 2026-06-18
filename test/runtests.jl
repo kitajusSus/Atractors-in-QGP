@@ -129,6 +129,11 @@ using GLMakie
     pca_time = run_pca_per_time(pca_dataset; n_components = 1, feature_cols = [2])
     @test size(pca_time.explained_variance_ratio) == (2, 1)
     @test all(isfinite, pca_time.explained_variance_ratio)
+    
+    pca_time_symbols = run_pca_per_time(pca_dataset; n_components = 1, feature_cols = [:T, :tauT])
+    @test size(pca_time_symbols.explained_variance_ratio) == (2, 1)
+    @test all(isfinite, pca_time_symbols.explained_variance_ratio)
+
     one_tau = run_pca_for_tau(pca_dataset, 0.2; n_components = 1, feature_cols = [2, 3])
     @test one_tau.n_points == 3
     @test length(one_tau.pca_result.explained_variance_ratio) == 1
@@ -310,6 +315,10 @@ using GLMakie
         mock_dataset = build_dataset(mock_sols)
         fig_grid = plot_lle_spectrum_statistics_grid(mock_dataset, [0.22, 0.26]; k_values = 2:2:4, ile_λ = 2)
         @test fig_grid isa GLMakie.Figure
+
+        # 5. Test plot_local_pca
+        fig_lpca = plot_local_pca(mock_dataset; tablica_k = [2, 3], n_slices = 2)
+        @test fig_lpca isa GLMakie.Figure
     end
 
     @testset "HJSW Model ewolucja i PCA" begin
@@ -341,5 +350,45 @@ using GLMakie
         hjsw_res = run_main(model, n_points = 5, tspan = (0.2, 0.3), T_range = (200.0, 1400.0), A_range = (-1.0, 8.0), seed = 5)
         @test length(hjsw_res.solutions) == 5
         @test size(hjsw_res.dataset, 2) == 5
+    end
+
+    @testset "Stable LPCA and Principal Angles" begin
+        mock_data = [
+            0.2 1.0 1.0;
+            0.2 1.1 1.05;
+            0.2 0.9 0.95;
+            0.2 1.0 0.98;
+            0.2 1.02 1.02;
+            0.3 1.0 1.0;
+            0.3 1.01 1.005;
+            0.3 0.99 0.995;
+            0.3 1.002 0.998;
+            0.3 1.003 1.002;
+        ]
+
+        res = compute_stable_lpca_collapse(
+            mock_data;
+            zakres_K = [2, 3],
+            Scrit = 0.5,
+            delta_k = 0.1,
+            feature_cols = [2, 3]
+        )
+        @test length(res.taus) == 2
+        @test size(res.S_PCA_matrix) == (2, 2)
+        @test length(res.S_PCA_mean) == 2
+        @test length(res.S_PCA_std) == 2
+        @test length(res.tau_LPCA_k) == 2
+
+        res_angles = compute_lpca_principal_angles(
+            mock_data;
+            k = 3,
+            subspace_dim = 1,
+            feature_cols = [2, 3]
+        )
+        @test length(res_angles.taus) == 2
+        @test length(res_angles.mean_angles) == 2
+        @test length(res_angles.std_angles) == 2
+        @test length(res_angles.all_angles_per_tau) == 2
+        @test all(0.0 .<= res_angles.mean_angles .<= 90.0)
     end
 end

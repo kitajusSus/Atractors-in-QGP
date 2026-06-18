@@ -92,7 +92,7 @@ function main()
 
     axislegend(ax2, [elem_data, elem_pc1, elem_pc2], ["Dane znormalizowane", "PC1 ", "PC2 "], position = :rt)
 
-    combined_path = joinpath(@__DIR__, "pca_sinus_combined.png")
+    combined_path = joinpath(@__DIR__, "pca_sinus_combined.pdf")
     println("Zapisywanie połączonego wykresu do: ", combined_path)
     save(combined_path, fig)
 
@@ -101,7 +101,7 @@ function main()
     lines!(ax_data, x_true, y_true, color = :crimson, linewidth = 3, label = "Czysty sinus")
     scatter!(ax_data, X[:, 1], X[:, 2], color = RGBAf(0.1176, 0.5647, 1.0, 0.5), markersize = 10, label = "Zaszumione dane")
     axislegend(ax_data, position = :rt)
-    data_path = joinpath(@__DIR__, "noisy_sine_data.png")
+    data_path = joinpath(@__DIR__, "noisy_sine_data.pdf")
     println("Zapisywanie wykresu danych do: ", data_path)
     save(data_path, fig_data)
 
@@ -117,7 +117,7 @@ function main()
         color = :forestgreen, linewidth = 4, arrowsize = 22
     )
     axislegend(ax_pca, [elem_data, elem_pc1, elem_pc2], ["Dane znormalizowane", "PC1 ", "PC2 "], position = :rt)
-    pca_path = joinpath(@__DIR__, "pca_arrows.png")
+    pca_path = joinpath(@__DIR__, "pca_arrows.pdf")
     println("Zapisywanie wykresu PCA do: ", pca_path)
     save(pca_path, fig_pca)
 

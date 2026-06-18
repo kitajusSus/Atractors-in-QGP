@@ -32,7 +32,7 @@ function lle(X::AbstractMatrix{T}; k::Int = 10, d::Int = 2, kdtree = nothing) wh
 
         Z = X[:, neighbors] .- X[:, i]
         C = Z' * Z
-        C += I(length(neighbors)) * 1.0e-3 * tr(C)
+        C += I(length(neighbors)) * (1.0e-3 * tr(C) + 1.0e-10)
 
         w = C \ ones(T, length(neighbors))
         w ./= sum(w)
@@ -124,7 +124,7 @@ function lle_spectrum(X; k = 10, kdtree = nothing, nλ = 10)
         neighbor_idx = @view idxs[i][2:(k + 1)]
 
         Z = X[:, neighbor_idx] .- X[:, i]
-        C = Z' * Z + I(length(neighbor_idx)) * 1.0e-3 * tr(Z' * Z)
+        C = Z' * Z + I(length(neighbor_idx)) * (1.0e-3 * tr(Z' * Z) + 1.0e-10)
 
         w = C \ ones(length(neighbor_idx))
         w ./= sum(w)
@@ -149,7 +149,7 @@ function lle_spectrum(X; k = 10, kdtree = nothing, nλ = 10)
 end
 
 
-function lle_spectrum_over_k(dataset; tau, k_values = 5:5:50, atol = 1.0e-8, nλ = 10)
+@views function lle_spectrum_over_k(dataset; tau, k_values = 5:5:50, atol = 1.0e-8, nλ = 10)
     _, Xτ = get_tau_slice(dataset, tau; atol = atol)
 
     X = Matrix{Float64}(Xτ)'
@@ -173,7 +173,7 @@ end
 Liczy średnią i odchylenie standardowe dla spektrum wartości własnych 
 lub czegokolwiek innego 
 """
-function spectrum_statistics(spectra)
+@views function spectrum_statistics(spectra)
     max_len = minimum(length.(spectra))
     S = reduce(hcat, [s[1:max_len] for s in spectra])
 
