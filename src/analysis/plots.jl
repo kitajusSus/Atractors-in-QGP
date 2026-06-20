@@ -12,7 +12,7 @@ using LaTeXStrings
 
 """
 function set_publication_theme(;
-        cmap = :davos,         # :davos, :lajolla, :devon, :haline, :phase
+        cmap = :devon,         # :davos, :lajolla, :devon, :haline, :phase
         n_colors = 25,         #
         bg_color = RGBf(0.98, 0.98, 0.98)
     )
@@ -1502,12 +1502,12 @@ function plot_map_lpca(
     dim_matrix = reduce(hcat, [r[2] for r in results])
 
     fig = Figure(size = (1400, 700))
-    y_indices = [1, 5:20:length(zakres_K)...]
+    y_indices = [5:20:length(zakres_K)...]
     y_labels = string.(zakres_K[y_indices])
 
     ax = Axis(
         fig[1, 1],
-        title = L"\text{Mapa lokalnych wymiarów w funkcji } \mathcal{L_D}(\tau, K)",
+        # title = L"\text{Mapa lokalnych wymiarów w funkcji } \mathcal{L_D}(\tau, K)",
         xlabel = L"\tau\,[\mathrm{fm}/c]",
         ylabel = L"K",
         xticks = 0:0.2:maximum(tau_vals),
@@ -1516,7 +1516,7 @@ function plot_map_lpca(
 
     hm = heatmap!(
         ax, tau_vals, eachindex(zakres_K), dim_matrix;
-        colormap = palette,
+        colormap = palette[8:end],
     )
 
     Colorbar(fig[1, 2], hm; label = L"\text{Lokalny wymiar}")

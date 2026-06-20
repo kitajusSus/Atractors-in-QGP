@@ -2,36 +2,53 @@ using LinearAlgebra
 using NearestNeighbors
 using Statistics
 
-"""
-    dims(X; k = 12, tol = 1e-8)
-
-Lokalny wymiar danych wyznaczany metodą PCA.
-"""
 @views function dims(X; k = 12, tol = 1.0e-8)
-
     n, d = size(X)
     k = min(k, n)
+    
     tree = KDTree(X')
     out = zeros(Float64, n)
+    
+    Y_buf = zeros(Float64, k, d)
+    C_buf = zeros(Float64, d, d)
+    
+    knn_idxs, _ = knn(tree, X', k, true)
+    
     for i in 1:n
-        idxs, _ = knn(tree, X[i, :], k, true)
-        neighbors = X[idxs, :]
-        μ = mean(neighbors, dims = 1)
-        Y = neighbors .- μ
-        C = (Y' * Y) / k
-        λ = sort(eigvals(Symmetric(C)), rev = true)
-
-        λ_norm = λ / sum(λ)
-
-        out[i] = count(λ_norm .> tol)
+        idxs = knn_idxs[i]
+        
+        Y = Y_buf[1:k, :]
+        for r in 1:k
+            for c in 1:d
+                Y[r, c] = X[idxs[r], c]
+            end
+        end
+        
+        μ = mean(Y, dims = 1)
+        Y .-= μ
+        
+        C = C_buf[1:d, 1:d]
+        mul!(C, Y', Y)
+        C ./= k
+        
+        λ = eigvals!(Symmetric(C))
+        
+        sum_λ = sum(λ)
+        if sum_λ > 0.0
+            cnt = 0
+            for val in λ
+                if (val / sum_λ) > tol
+                    cnt += 1
+                end
+            end
+            out[i] = cnt
+        else
+            out[i] = 1.0
+        end
     end
     return out
 end
 
-
-"""
-Normalizacja każdej cechy przez jej maksymalną wartość bezwzględną.
-"""
 function normalize_max(X)
     scale = maximum(abs.(X), dims = 1)
     for j in eachindex(scale)
@@ -42,10 +59,6 @@ function normalize_max(X)
     return X ./ scale
 end
 
-
-"""
-Generuje klasyczny swiss-roll.
-"""
 function swiss_roll(n; noise = 0.0)
     t = (3π / 2) .* (1 .+ 2 .* rand(n))
     h = 10 .* rand(n)
@@ -59,82 +72,54 @@ function swiss_roll(n; noise = 0.0)
     return X, t
 end
 
-
-"""
-    compute_lpca(dataset, k, n_slices)
-
-Średni lokalny wymiar danych jako funkcja czasu τ.
-Zakładany format danych:
-
-    [τ, x₁, x₂, ...]
-"""
 @views function compute_lpca(
         dataset,
         k::Int,
         n_slices::Int;
-        feature_cols::AbstractVector{<:Integer} =
-            collect(2:size(dataset, 2))
+        feature_cols::AbstractVector{<:Integer} = collect(2:size(dataset, 2))
     )
     taus = sort(unique(dataset[:, 1]))
-
-    idxs = round.(
-        Int,
-        range(1, length(taus), length = n_slices)
-    )
+    idxs = round.(Int, range(1, length(taus), length = n_slices))
     selected_taus = taus[idxs]
 
     tol = 0.01
+    n_selected = length(selected_taus)
+    
+    tau_values = zeros(Float64, n_selected)
+    mean_dims = zeros(Float64, n_selected)
+    std_dims = zeros(Float64, n_selected)
 
-    tau_values = Float64[]
-    mean_dims = Float64[]
-    std_dims = Float64[]
-
-    for τ in selected_taus
-
-        _, X_tau = get_tau_slice(
-            dataset,
-            τ;
-            feature_cols = feature_cols
-        )
-
+    for (idx, τ) in enumerate(selected_taus)
+        _, X_tau = get_tau_slice(dataset, τ; feature_cols = feature_cols)
         X_norm = normalize_max(X_tau)
-        local_dims = dims(
-            X_norm;
-            k = k,
-            tol = tol
-        )
+        
+        local_dims = dims(X_norm; k = k, tol = tol)
 
-        push!(tau_values, τ)
-        push!(mean_dims, mean(local_dims))
-        push!(std_dims, std(local_dims))
-
+        tau_values[idx] = τ
+        mean_dims[idx] = mean(local_dims)
+        std_dims[idx] = std(local_dims)
     end
 
     return tau_values, mean_dims, std_dims
 end
 
-
-"""
-    dynamic_lpca_analysis(...)
-
-Analiza zapadania wymiaru lokalnego.
-"""
 @views function dynamic_lpca_analysis(
         dataset::AbstractMatrix{<:Real};
         K::Int = 15,
         eta::Real = 0.95,
         delta::Real = 0.05
     )
-
     taus = sort(unique(Float64.(dataset[:, 1])))
     d_bar = zeros(length(taus))
     feature_cols = 2:size(dataset, 2)
-    for (nτ, τ) in enumerate(taus)
+    d = size(dataset, 2) - 1
 
+    for (nτ, τ) in enumerate(taus)
         mask = dataset[:, 1] .== τ
         X_tau = dataset[mask, feature_cols]
         n_points = size(X_tau, 1)
         k = min(K, n_points - 1)
+        
         if k < 2
             d_bar[nτ] = 1.0
             continue
@@ -143,20 +128,28 @@ Analiza zapadania wymiaru lokalnego.
         X_norm = normalize_max(X_tau)
         tree = KDTree(X_norm')
 
-        idxs, _ = knn(
-            tree,
-            X_norm',
-            k + 1,
-            true
-        )
+        idxs, _ = knn(tree, X_norm', k + 1, true)
         d_sum = 0
+        
+        X_local_buf = zeros(Float64, k, d)
+
         for i in 1:n_points
             neighbors = idxs[i][2:end]
-            X_local = X_norm[neighbors, :]
+            
+            X_local = X_local_buf[1:k, :]
+            for r in 1:k
+                for c in 1:d
+                    X_local[r, c] = X_norm[neighbors[r], c]
+                end
+            end
+            
             X_local .-= mean(X_local, dims = 1)
-            S = svdvals(X_local)
-            λ = S .^ 2
-            λ_sum = sum(λ)
+            S = svdvals!(X_local)
+            
+            λ_sum = 0.0
+            for s in S
+                λ_sum += s^2
+            end
 
             if λ_sum ≈ 0.0
                 d_sum += 1
@@ -164,27 +157,24 @@ Analiza zapadania wymiaru lokalnego.
             end
 
             evr = 0.0
-            d = 1
-            for j in eachindex(λ)
-                evr += λ[j] / λ_sum
-
+            d_val = 1
+            for j in eachindex(S)
+                evr += (S[j]^2) / λ_sum
                 if evr >= eta
-                    d = j
+                    d_val = j
                     break
                 end
-
             end
-            d_sum += d
+            d_sum += d_val
         end
         d_bar[nτ] = d_sum / n_points
     end
+
     tau_LPCA = NaN
     threshold = 1.0 + delta
     for i in eachindex(taus)
         if all(d_bar[i:end] .<= threshold)
-
             tau_LPCA = taus[i]
-
             break
         end
     end
@@ -192,119 +182,97 @@ Analiza zapadania wymiaru lokalnego.
     return (; taus, d_bar, tau_LPCA)
 end
 
-
-"""
-    compute_lpca_entropy(...)
-
-Entropia lokalnego PCA jako funkcja czasu τ.
-"""
 @views function compute_lpca_entropy(
         dataset::AbstractMatrix{<:Real},
         k::Int;
         n_slices::Union{Nothing, Int} = nothing,
-        feature_cols::AbstractVector{<:Integer} =
-            collect(2:size(dataset, 2)),
+        feature_cols::AbstractVector{<:Integer} = collect(2:size(dataset, 2)),
         tol::Real = 1.0e-8
     )
-
     taus = sort(unique(dataset[:, 1]))
-
     if n_slices === nothing
         selected_taus = taus
     else
-        idxs = round.(
-            Int,
-            range(1, length(taus), length = n_slices)
-        )
-
+        idxs = round.(Int, range(1, length(taus), length = n_slices))
         selected_taus = taus[idxs]
     end
 
-    # definicje tablic na dane
-    tau_values = Float64[]
-    mean_entropy = Float64[]
-    std_entropy = Float64[]
-    for τ in selected_taus
-        _, X_tau = get_tau_slice(
-            dataset,
-            τ;
-            feature_cols = feature_cols
-        )
+    n_selected = length(selected_taus)
+    tau_values = zeros(Float64, n_selected)
+    mean_entropy = zeros(Float64, n_selected)
+    std_entropy = zeros(Float64, n_selected)
+    
+    d = length(feature_cols)
+
+    for (idx, τ) in enumerate(selected_taus)
+        _, X_tau = get_tau_slice(dataset, τ; feature_cols = feature_cols)
         X_norm = normalize_max(X_tau)
         n_points = size(X_norm, 1)
         k_local = min(k, n_points)
 
         if k_local < 2
-
-            push!(tau_values, τ)
-            push!(mean_entropy, 0.0)
-            push!(std_entropy, 0.0)
-
+            tau_values[idx] = τ
+            mean_entropy[idx] = 0.0
+            std_entropy[idx] = 0.0
             continue
         end
-        tree = KDTree(X_norm')
 
-        idxs, _ = knn(
-            tree,
-            X_norm',
-            k_local,
-            true
-        )
+        tree = KDTree(X_norm')
+        idxs_knn, _ = knn(tree, X_norm', k_local, true)
         entropies = zeros(n_points)
 
+        Y_buf = zeros(Float64, k_local, d)
+        C_buf = zeros(Float64, d, d)
+
         for i in 1:n_points
-            neighbors = X_norm[idxs[i], :]
-            μ = mean(neighbors, dims = 1)
-            Y = neighbors .- μ
-            C = (Y' * Y) / k_local
-            λ = sort(
-                eigvals(Symmetric(C)),
-                rev = true
-            )
-            λ = max.(λ, 0.0)
+            neighbors_idx = idxs_knn[i]
+            
+            Y = Y_buf[1:k_local, :]
+            for r in 1:k_local
+                for c in 1:d
+                    Y[r, c] = X_norm[neighbors_idx[r], c]
+                end
+            end
+            
+            μ = mean(Y, dims = 1)
+            Y .-= μ
+            
+            C = C_buf[1:d, 1:d]
+            mul!(C, Y', Y)
+            C ./= k_local
+            
+            λ = eigvals!(Symmetric(C))
+            λ .= max.(λ, 0.0)
             λ_sum = sum(λ)
+            
             if λ_sum ≈ 0.0
                 continue
             end
-            λ_norm = λ / λ_sum
-            r = count(λ_norm .> tol)
-
-            if r <= 1
-                continue
-            end
-
+            
             S = 0.0
-
-            for val in λ_norm
-                if val > tol
-                    S -= val * log(val)
+            r_count = 0
+            for val in λ
+                λ_norm_val = val / λ_sum
+                if λ_norm_val > tol
+                    S -= λ_norm_val * log(λ_norm_val)
+                    r_count += 1
                 end
             end
-            entropies[i] = S / log(r)
+            
+            if r_count <= 1
+                continue
+            end
+            
+            entropies[i] = S / log(r_count)
         end
-        push!(tau_values, τ)
-        push!(mean_entropy, mean(entropies))
-        push!(std_entropy, std(entropies))
+        
+        tau_values[idx] = τ
+        mean_entropy[idx] = mean(entropies)
+        std_entropy[idx] = std(entropies)
     end
     return tau_values, mean_entropy, std_entropy
 end
 
-
-"""
-    compute_stable_lpca_collapse(
-        dataset::AbstractMatrix{<:Real};
-        zakres_K::AbstractVector{<:Integer} = [10, 20, 30, 40],
-        Scrit::Real = 0.2,
-        delta_k::Real = 0.05,
-        n_slices::Union{Nothing, Int} = nothing,
-        feature_cols::AbstractVector{<:Integer} = collect(2:size(dataset, 2)),
-        tol::Real = 1.0e-8,
-        norm_type::Symbol = :embedding
-    )
-
-1. Mean spectral entropy over scales < Scrit
-2. Standard deviation (spread) over scales < delta_k
-"""
 function compute_stable_lpca_collapse(
         dataset::AbstractMatrix{<:Real};
         zakres_K::AbstractVector{<:Integer} = [10, 20, 30, 40],
@@ -315,7 +283,6 @@ function compute_stable_lpca_collapse(
         tol::Real = 1.0e-8,
         norm_type::Symbol = :embedding
     )
-    # Get unique proper times
     taus = sort(unique(dataset[:, 1]))
     if n_slices !== nothing
         idxs = round.(Int, range(1, length(taus), length = n_slices))
@@ -327,6 +294,7 @@ function compute_stable_lpca_collapse(
     n_taus = length(wybrane_tau)
     n_k = length(zakres_K)
     k_max = maximum(zakres_K)
+    d = length(feature_cols)
 
     S_PCA_matrix = zeros(Float64, n_taus, n_k)
 
@@ -334,7 +302,7 @@ function compute_stable_lpca_collapse(
         _, X_tau = get_tau_slice(dataset, tau; feature_cols = feature_cols)
         X_norm = normalize_max(X_tau)
 
-        n_points, d = size(X_norm)
+        n_points, d_size = size(X_norm)
         k_max_actual = min(k_max, n_points)
         if k_max_actual < 2
             continue
@@ -342,6 +310,9 @@ function compute_stable_lpca_collapse(
 
         tree = KDTree(X_norm')
         knn_idxs, _ = knn(tree, X_norm', k_max_actual, true)
+
+        Y_buf = zeros(Float64, k_max_actual, d)
+        C_buf = zeros(Float64, d, d)
 
         for (k_idx, k_val) in enumerate(zakres_K)
             k_actual = min(k_val, n_points)
@@ -352,15 +323,24 @@ function compute_stable_lpca_collapse(
 
             entropies = zeros(Float64, n_points)
             for i in 1:n_points
-                neighbor_idxs = knn_idxs[i][1:k_actual]
-                neighbors = X_norm[neighbor_idxs, :]
+                @views neighbor_idxs = knn_idxs[i][1:k_actual]
+                
+                Y = Y_buf[1:k_actual, :]
+                for r in 1:k_actual
+                    for c in 1:d
+                        Y[r, c] = X_norm[neighbor_idxs[r], c]
+                    end
+                end
 
-                μ = mean(neighbors, dims = 1)
-                Y = neighbors .- μ
+                μ = mean(Y, dims = 1)
+                Y .-= μ
 
-                C = (Y' * Y) / k_actual
-                λ = sort(eigvals(Symmetric(C)), rev = true)
-                λ = max.(λ, 0.0)
+                C = C_buf[1:d, 1:d]
+                mul!(C, Y', Y)
+                C ./= k_actual
+                
+                λ = eigvals!(Symmetric(C))
+                λ .= max.(λ, 0.0)
                 sum_λ = sum(λ)
 
                 if sum_λ ≈ 0.0
@@ -368,20 +348,21 @@ function compute_stable_lpca_collapse(
                     continue
                 end
 
-                λ_norm = λ / sum_λ
                 S_i = 0.0
-                for val in λ_norm
-                    if val > tol
-                        S_i -= val * log(val)
+                r_count = 0
+                for val in λ
+                    λ_norm = val / sum_λ
+                    if λ_norm > tol
+                        S_i -= λ_norm * log(λ_norm)
+                        r_count += 1
                     end
                 end
 
                 if norm_type == :embedding
                     entropies[i] = S_i / log(d)
                 elseif norm_type == :active
-                    r = count(λ_norm .> tol)
-                    entropies[i] = r <= 1 ? 0.0 : S_i / log(r)
-                else # :none
+                    entropies[i] = r_count <= 1 ? 0.0 : S_i / log(r_count)
+                else 
                     entropies[i] = S_i
                 end
             end
@@ -420,22 +401,6 @@ function compute_stable_lpca_collapse(
     )
 end
 
-
-"""
-    compute_lpca_principal_angles(
-        dataset::AbstractMatrix{<:Real};
-        k::Int = 20,
-        subspace_dim::Int = 1,
-        n_slices::Union{Nothing, Int} = nothing,
-        feature_cols::AbstractVector{<:Integer} = collect(2:size(dataset, 2))
-    )
-
-Compares neighboring local tangent spaces by computing the principal angles between them.
-For each point x_i in a time slice, we find its nearest neighbor x_j (excluding itself).
-We retrieve their local bases V_i and V_j (composed of the first `subspace_dim` principal components).
-The cosines of the principal angles are the singular values of V_i' * V_j.
-We return the angles in degrees: theta_r = arccos(sigma_r) * (180/pi).
-"""
 @views function compute_lpca_principal_angles(
         dataset::AbstractMatrix{<:Real};
         k::Int = 20,
