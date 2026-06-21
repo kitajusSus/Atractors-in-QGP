@@ -13,7 +13,7 @@ using LaTeXStrings
 """
 function set_publication_theme(;
         cmap = :devon,         # :davos, :lajolla, :devon, :haline, :phase
-        n_colors = 25,         #
+        n_colors = 10,         #
         bg_color = RGBf(0.98, 0.98, 0.98)
     )
 
@@ -913,7 +913,7 @@ function plot_lle_spectrum_statistics(dataset; τ, k_values = 5:5:50, ile_λ = 4
     fig = Figure(size = (1400, 700))
     ax = Axis(
         fig[1, 1],
-        title = L"\text{LLE analiza wartości własnych [K z zakresu (%$k_min - %$k_max)] (średnia } \pm \sigma \text{) } \tau=%$τ",
+        title = L"\text{LLE analiza wartości własnych dla K z zakresu (%$k_min - %$k_max) (średnia } \pm \sigma \text{) } \tau=%$τ",
         xlabel = L"\text{Indeks wartości własnej } \lambda_{i}",
         ylabel = L"\text{Wartość } \lambda_{i}"
     )
@@ -963,7 +963,7 @@ function plot_lle_spectrum_statistics_grid(dataset, taus; k_values = 5:5:50, ile
 
     k_min = minimum(k_values)
     k_max = maximum(k_values)
-    title_text = L"\text{LLE analiza wartości własnych [K z zakresu (%$k_min - %$k_max)] (średnia } \pm \sigma \text{)}"
+    title_text = L"\text{LLE analiza wartości własnych dla K z zakresu (%$k_min - %$k_max) (średnia } \pm \sigma \text{)}"
     Label(fig[1, 2:(ncols + 1)], title_text, fontsize = 36, font = :bold, padding = (0, 0, 10, 0))
 
     Label(fig[2:(nrows + 1), 1], L"\text{Wartość } \lambda_{i}", rotation = pi / 2, font = :bold, fontsize = 32)
