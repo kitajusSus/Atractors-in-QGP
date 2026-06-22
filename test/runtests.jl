@@ -316,6 +316,13 @@ using GLMakie
         fig_grid = plot_lle_spectrum_statistics_grid(mock_dataset, [0.22, 0.26]; k_values = 2:2:4, ile_λ = 2)
         @test fig_grid isa GLMakie.Figure
 
+        fig_grid_nested = plot_lle_spectrum_statistics_grid(mock_dataset, [0.22, 0.26]; k_values = [2:2:4], ile_λ = 2)
+        @test fig_grid_nested isa GLMakie.Figure
+
+        @test AtractorsQGP.flatten_k_values([5:1:10]) == [5, 6, 7, 8, 9, 10]
+        @test AtractorsQGP.flatten_k_values(5:1:10) == 5:1:10
+        @test AtractorsQGP.flatten_k_values([5, 6, 7]) == [5, 6, 7]
+
         # 5. Test plot_local_pca
         fig_lpca = plot_local_pca(mock_dataset; tablica_k = [2, 3], n_slices = 2)
         @test fig_lpca isa GLMakie.Figure

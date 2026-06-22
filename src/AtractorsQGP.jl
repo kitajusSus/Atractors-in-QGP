@@ -46,26 +46,26 @@ include("analysis/fit_polynomials.jl")
 export compute_polynomial_lle
 
 # ── PINNs ──────────────────────────────────────────────────────────────────
-# include("pinns/network.jl")
-# include("pinns/losses.jl")
-# include("pinns/training.jl")
-# include("pinns/pinn_solver.jl")
-# include("pinns/jacobian_analysis.jl")
-# include("pinns/data_jacobian_analysis.jl")
-# export PINNConfig, build_pinn_network, normalize_pinn_input, denormalize_pinn_output
-# export pinn_predict
-# export train_pinn, PINNResult
-# export predict_trajectories_pinn, build_pinn_dataset
-# export compare_pinn_ode, pinn_attractor_analysis
-# # Jacobian-based dimensionality reduction
-# export pinn_jacobian, pinn_jacobian_full
-# export d_eff_from_singular_values, pinn_deff_at
-# export pinn_deff_scan, pinn_jacobian_scan
-# export pinn_hydrodynamisation_time
-# export sample_ic_ensemble, fixed_transport_ic_ensemble
-# export pinn_dimensionality_workflow
-# # Data-driven Neural Jacobians
-# export normalize_generic, build_generic_network, compute_data_jacobian
+include("pinns/network.jl")
+include("pinns/losses.jl")
+include("pinns/training.jl")
+include("pinns/pinn_solver.jl")
+include("pinns/jacobian_analysis.jl")
+include("pinns/data_jacobian_analysis.jl")
+export PINNConfig, build_pinn_network, normalize_pinn_input, denormalize_pinn_output
+export pinn_predict
+export train_pinn, PINNResult
+export predict_trajectories_pinn, build_pinn_dataset
+export compare_pinn_ode, pinn_attractor_analysis
+# Jacobian-based dimensionality reduction
+export pinn_jacobian, pinn_jacobian_full
+export d_eff_from_singular_values, pinn_deff_at
+export pinn_deff_scan, pinn_jacobian_scan
+export pinn_hydrodynamisation_time
+export sample_ic_ensemble, fixed_transport_ic_ensemble
+export pinn_dimensionality_workflow
+# Data-driven Neural Jacobians
+export normalize_generic, build_generic_network, compute_data_jacobian
 include("io/data_io.jl")
 include("io/attractor.jl")
 export build_attractor_interpoland, get_attractor_line, attractor_data

@@ -900,6 +900,7 @@ ale trzeba pamiętać że pierwsza wartość własna jest (i powinna być) zawsz
 
 """
 function plot_lle_spectrum_statistics(dataset; τ, k_values = 5:5:50, ile_λ = 4)
+    k_values = flatten_k_values(k_values)
     set_publication_theme()
 
     palette = Makie.theme(:Palette).color[]
@@ -945,6 +946,7 @@ end
     plot_lle_spectrum_statistics_grid(dataset, taus; k_values = 5:5:50, ile_λ = 4, atol = 1.0e-8)
 """
 function plot_lle_spectrum_statistics_grid(dataset, taus; k_values = 5:5:50, ile_λ = 4, atol = 1.0e-8)
+    k_values = flatten_k_values(k_values)
     set_publication_theme()
     palette = Makie.theme(:Palette).color[]
 
@@ -1025,6 +1027,7 @@ function plot_lle_spectrum_statistics_grid(dataset, taus; k_values = 5:5:50, ile
 end
 
 @views function plot_lle_σ_spectrum(dataset, taus; k_values = 5:5:50, ile_λ = 3, atol = 1.0e-8)
+    k_values = flatten_k_values(k_values)
     set_publication_theme()
     palette = Makie.theme(:Palette).color[]
     n_taus = length(taus)
@@ -1375,6 +1378,7 @@ function plot_lle_spectrum_analysis(
         atol::Real = 1.0e-8
     )
 
+    k_values = flatten_k_values(k_values)
     set_publication_theme()
     palette = Makie.theme(:Palette).color[]
 
@@ -1478,7 +1482,7 @@ end
             mean_k1;
             linewidth = 2.5,
             color = c,
-            label = L"K = %$(k_bazowe)"
+            label = L"K = %$(k_bazowe), %$(k_drugie)"
         )
     end
 
