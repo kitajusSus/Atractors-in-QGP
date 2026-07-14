@@ -277,5 +277,3 @@ function get_attractor_line_for_frame(
 
     return (; x, y)
 end
-
-
