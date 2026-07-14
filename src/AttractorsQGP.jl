@@ -1,4 +1,4 @@
-module AtractorsQGP
+module AttractorsQGP
 
 using LinearAlgebra
 using Statistics
