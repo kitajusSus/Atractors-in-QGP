@@ -183,6 +183,10 @@ end
     return (; taus, d_bar, tau_LPCA)
 end
 
+# NIŻEJ SĄ TYLKO JAKIEŚ TESTOWE GŁUPOTY NIE JEST TO LEKTURĄ OBOWIĄZKOWĄ DLA CIEBIE MATEUSZ
+
+
+
 @views function compute_lpca_entropy(
         dataset::AbstractMatrix{<:Real},
         k::Int;
