@@ -69,6 +69,7 @@ include("pinns/data_jacobian_analysis.jl")
 
 include("io/data_io.jl")
 include("io/attractor.jl")
+include("io/citation.jl")
 
 export HydroParams, AbstractHydroModel, BRSSSModel, MISModel, HJSWModel
 export HBARC_MEV_FM, MEV_PER_FM, FM_PER_MEV, to_temperature_unit, temperature_to_fm
@@ -92,6 +93,7 @@ export normalize_generic, build_generic_network, compute_data_jacobian
 
 export save_dataset_csv, load_dataset_csv, save_dataset_h5, load_dataset_h5, save_dataset_jls, load_dataset_jls, save_dataset, load_dataset
 export attractor_data, build_attractor_interpolant, get_attractor_line, temperature_grid, interpolate_attractor_state, get_attractor_line_for_frame
+export citation
 
 export set_publication_theme, PLOT_KEYS, resolve_def, get_data, get_limits
 export plot_phase_space_grid, plot_thermodynamics_evolution, plot_phase_space_evolution, plot_phase_space_evolution_3d, plot_attractor, plot_attractor_Aw_T

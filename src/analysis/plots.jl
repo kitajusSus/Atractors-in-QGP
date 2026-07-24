@@ -669,17 +669,14 @@ function plot_pca_bar_variance(
         dataset::AbstractMatrix{<:Real};
         tau::Real = 1.14,
         method::Symbol = :minmax,
-        gamma::Float64 = 1.0
+        gamma::Float64 = 1.0,
+        feature_cols::Union{AbstractVector{<:Integer}, Nothing} = nothing
     )
     set_publication_theme()
     palette = Makie.theme(:Palette).color[]
 
-    Xtau = if size(dataset, 2) == 3
-        _, sliced = get_tau_slice(dataset, tau; atol = 1.0e-8, feature_cols = [2, 3])
-        sliced
-    else
-        Matrix{Float64}(dataset)
-    end
+    cols = isnothing(feature_cols) ? (2:size(dataset, 2)) : feature_cols
+    _, Xtau = get_tau_slice(dataset, tau; atol = 1.0e-8, feature_cols = cols)
 
     pca_result = if method === :minmax
         run_pca(Xtau; n_components = 2)

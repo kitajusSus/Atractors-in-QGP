@@ -107,16 +107,17 @@ end
         dataset::AbstractMatrix{<:Real};
         K::Int = 15,
         eta::Real = 0.95,
-        delta::Real = 0.05
+        delta::Real = 0.05,
+        feature_cols::Union{AbstractVector{<:Integer}, Nothing} = nothing
     )
     taus = sort(unique(Float64.(dataset[:, 1])))
     d_bar = zeros(length(taus))
-    feature_cols = 2:size(dataset, 2)
-    d = size(dataset, 2) - 1
+    cols = isnothing(feature_cols) ? (2:size(dataset, 2)) : feature_cols
+    d = length(cols)
 
     for (nτ, τ) in enumerate(taus)
         mask = dataset[:, 1] .== τ
-        X_tau = dataset[mask, feature_cols]
+        X_tau = dataset[mask, cols]
         n_points = size(X_tau, 1)
         k = min(K, n_points - 1)
         

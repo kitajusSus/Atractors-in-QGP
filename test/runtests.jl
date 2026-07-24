@@ -1,13 +1,13 @@
 using Test
-# include("../src/AtractorsQGP.jl")
-using AtractorsQGP
+# include("../src/AttractorsQGP.jl")
+using AttractorsQGP
 using StaticArrays
 using Random
 using Lux
 using ComponentArrays
 using GLMakie
 
-@testset "AtractorsQGP refactor API" begin
+@testset "AttractorsQGP refactor API" begin
     model = BRSSSModel()
     u0 = [800.0, 0.5]
     tspan = (0.22, 0.5)
@@ -17,7 +17,7 @@ using GLMakie
     τ = 0.3
     T, A = 5.0, 0.4
     p = model.params
-    du = AtractorsQGP.rhs([T, A], model, τ)
+    du = AttractorsQGP.rhs([T, A], model, τ)
     expected_dT = (T / τ) * (-1 / 3 + A / 18)
     expected_term_T = τ * T * (A + (p.lambda1 / (12 * p.eta_over_s)) * A^2)
     expected_term_A2 = (2 / 9) * p.tau_pi * A^2
@@ -61,7 +61,7 @@ using GLMakie
         0.2  850.0 0.2
         0.3  800.0 0.1
     ]
-    split_ranges = AtractorsQGP._split_trajectories(split_input)
+    split_ranges = AttractorsQGP._split_trajectories(split_input)
     @test split_ranges == [1:2, 3:4]
 
     bad_solutions = [
@@ -319,9 +319,9 @@ using GLMakie
         fig_grid_nested = plot_lle_spectrum_statistics_grid(mock_dataset, [0.22, 0.26]; k_values = [2:2:4], ile_λ = 2)
         @test fig_grid_nested isa GLMakie.Figure
 
-        @test AtractorsQGP.flatten_k_values([5:1:10]) == [5, 6, 7, 8, 9, 10]
-        @test AtractorsQGP.flatten_k_values(5:1:10) == 5:1:10
-        @test AtractorsQGP.flatten_k_values([5, 6, 7]) == [5, 6, 7]
+        @test AttractorsQGP.flatten_k_values([5:1:10]) == [5, 6, 7, 8, 9, 10]
+        @test AttractorsQGP.flatten_k_values(5:1:10) == 5:1:10
+        @test AttractorsQGP.flatten_k_values([5, 6, 7]) == [5, 6, 7]
 
         # 5. Test plot_local_pca
         fig_lpca = plot_local_pca(mock_dataset; tablica_k = [2, 3], n_slices = 2)
@@ -397,5 +397,34 @@ using GLMakie
         @test length(res_angles.std_angles) == 2
         @test length(res_angles.all_angles_per_tau) == 2
         @test all(0.0 .<= res_angles.mean_angles .<= 90.0)
+
+        # High-dimensional (>2D feature space) test for LPCA
+        # 1 time column + 4 feature columns (d=4)
+        mock_data_4d = randn(20, 5)
+        mock_data_4d[1:10, 1] .= 0.2
+        mock_data_4d[11:20, 1] .= 0.5
+        
+        tau_lpca_4d, mean_d_4d, std_d_4d = compute_lpca(mock_data_4d, 5, 2)
+        @test length(tau_lpca_4d) == 2
+        @test length(mean_d_4d) == 2
+
+        dyn_lpca_4d = dynamic_lpca_analysis(mock_data_4d; K = 5)
+        @test length(dyn_lpca_4d.taus) == 2
+        @test length(dyn_lpca_4d.d_bar) == 2
+
+        tau_ent_4d, mean_ent_4d, std_ent_4d = compute_lpca_entropy(mock_data_4d, 5)
+        @test length(tau_ent_4d) == 2
+        @test length(mean_ent_4d) == 2
+    end
+
+    @testset "citation" begin
+        io = IOBuffer()
+        citation(io)
+        out = String(take!(io))
+        @test contains(out, "@misc{AttractorsQGP")
+        @test contains(out, "Krzysztof Bezubik")
+        @test contains(out, "Michał Spaliński")
+        @test contains(out, "https://github.com/kitajusSus/Attractors-in-QGP")
     end
 end
+
