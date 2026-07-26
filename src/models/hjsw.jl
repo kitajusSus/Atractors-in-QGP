@@ -24,3 +24,12 @@ function HJSWModel(;
     params = HydroParams(T(eta_over_s), T(tau_pi), T(lambda1))
     return HJSWModel(params, T(omega_R), T(omega_I))
 end
+
+function Base.getproperty(model::HJSWModel, sym::Symbol)
+    if sym === :C_eta
+        return getfield(model, :params).eta_over_s
+    else
+        return getfield(model, sym)
+    end
+end
+

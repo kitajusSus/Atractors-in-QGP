@@ -45,30 +45,34 @@ end
 """
     generate_initial_conditions(model::HJSWModel, n::Integer; kwargs...)
 
-Wersja dla HJSW generująca warunki początkowe [T0, A_MIS0, A_QNM0, dA_QNM0].
+Wersja dla HJSW generująca warunki początkowe [T0, A0, B0] w postaci 3D SVektorów.
 """
 function generate_initial_conditions(
         model::HJSWModel,
         n::Integer = 5000;
         T_range::Tuple{<:Real, <:Real} = (200.0, 1400.0),
-        A_MIS_range::Tuple{<:Real, <:Real} = (-1.0, 10.0),
-        A_QNM_range::Tuple{<:Real, <:Real} = (-2.0, 2.0),
+        A_range::Union{Nothing, Tuple{<:Real, <:Real}} = nothing,
+        A_MIS_range::Union{Nothing, Tuple{<:Real, <:Real}} = nothing,
+        B_range::Union{Nothing, Tuple{<:Real, <:Real}} = nothing,
+        A_QNM_range::Union{Nothing, Tuple{<:Real, <:Real}} = nothing,
         temperature_unit::Symbol = :MeV,
         seed::Integer = 5,
         rng::Union{AbstractRNG, Nothing} = nothing,
     )
     @assert n > 0 "n must be positive."
+    actual_A_range = !isnothing(A_range) ? A_range : (!isnothing(A_MIS_range) ? A_MIS_range : (-1.0, 10.0))
+    actual_B_range = !isnothing(B_range) ? B_range : (!isnothing(A_QNM_range) ? A_QNM_range : (-2.0, 2.0))
+
     rng_local = isnothing(rng) ? Xoshiro(seed) : rng
-    ics = Vector{SVector{4, Float64}}(undef, n)
+    ics = Vector{SVector{3, Float64}}(undef, n)
 
     for i in eachindex(ics)
         T0 = rand(rng_local) * (T_range[2] - T_range[1]) + T_range[1]
         T0_fm = temperature_to_fm(T0, temperature_unit)
-        A_MIS0 = rand(rng_local) * (A_MIS_range[2] - A_MIS_range[1]) + A_MIS_range[1]
-        A_QNM0 = rand(rng_local) * (A_QNM_range[2] - A_QNM_range[1]) + A_QNM_range[1]
-        dA_QNM0 = rand(rng_local) * 0.1
+        A0 = rand(rng_local) * (actual_A_range[2] - actual_A_range[1]) + actual_A_range[1]
+        B0 = rand(rng_local) * (actual_B_range[2] - actual_B_range[1]) + actual_B_range[1]
 
-        ics[i] = SVector{4, Float64}(T0_fm, A_MIS0, A_QNM0, dA_QNM0)
+        ics[i] = SVector{3, Float64}(T0_fm, A0, B0)
     end
     return ics
 end

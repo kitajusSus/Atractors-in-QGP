@@ -97,6 +97,7 @@ end
 const PLOT_KEYS = Dict(
     :T => (L"T\,[\mathrm{fm}^{-1}]", (x, _) -> x[2]),
     :A => (L"\mathcal{A}", (x, _) -> x[3]),
+    :B => (L"\mathcal{B}", (x, _) -> size(x, 1) >= 4 ? x[4] : 0.0),
     :tauT => (L"\tau T", (x, _) -> x[1] * x[2]),
     :Tdot => (L"\dot{T}\,[\mathrm{fm}^{-2}]", (x, _) -> (x[2] / x[1]) * (-1 / 3 + x[3] / 18)),
     :tau2Tdot => (L"\tau^2 \dot{T}", (x, _) -> x[1]^2 * ((x[2] / x[1]) * (-1 / 3 + x[3] / 18))),
@@ -108,6 +109,10 @@ const PLOT_KEYS = Dict(
     :A_norm => (
         L"\mathcal{A} / \mathcal{A}_{\mathrm{max}}",
         (x, slice) -> x[3] / maximum(slice[:, 3]),
+    ),
+    :B_norm => (
+        L"\mathcal{B} / \mathcal{B}_{\mathrm{max}}",
+        (x, slice) -> size(slice, 2) >= 4 ? x[4] / (maximum(abs.(slice[:, 4])) == 0 ? 1.0 : maximum(abs.(slice[:, 4]))) : 0.0,
     ),
     # lambda funkcje kongo lekkie
     # Tdot / Tdot_max dla danej chwili czasu

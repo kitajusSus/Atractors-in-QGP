@@ -16,15 +16,15 @@ n_trajs = length(sols)
 n_steps = length(sols[1].t)
 total_samples = n_trajs * n_steps
 
-X_raw = Matrix{Float64}(undef, total_samples, 5)
-Y_raw = Matrix{Float64}(undef, total_samples, 4)
+X_raw = Matrix{Float64}(undef, total_samples, 4)
+Y_raw = Matrix{Float64}(undef, total_samples, 3)
 
 row_idx = 1
 for i in 1:n_trajs
     x0 = ics[i]
     for j in 1:n_steps
         X_raw[row_idx, 1] = sols[i].t[j]
-        X_raw[row_idx, 2:5] .= x0
+        X_raw[row_idx, 2:4] .= x0
         Y_raw[row_idx, :] .= sols[i].u[j]
         row_idx += 1
     end
@@ -36,7 +36,7 @@ Y_norm, mn_out, mx_out = normalize_generic(Y_raw)
 X_train = Matrix(X_norm')
 Y_train = Matrix(Y_norm')
 
-nn = build_generic_network(5, 4; hidden_layers = 3, hidden_size = 64)
+nn = build_generic_network(4, 3; hidden_layers = 3, hidden_size = 64)
 rng = Xoshiro(5)
 ps_raw, st = Lux.setup(rng, nn)
 ps = ComponentArray{Float64}(ps_raw)

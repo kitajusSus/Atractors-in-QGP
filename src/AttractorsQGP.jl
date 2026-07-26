@@ -122,25 +122,22 @@ function run_main(
         n_points::Integer = 5000,
         tspan::Tuple{<:Real, <:Real} = (0.2, 1.2),
         T_range::Tuple{<:Real, <:Real} = (200.0, 1400.0),
+        A_range::Tuple{<:Real, <:Real} = (-1.0, 10.0),
+        B_range::Tuple{<:Real, <:Real} = (-2.0, 2.0),
         A_MIS_range::Union{Nothing, Tuple{<:Real, <:Real}} = nothing,
-        A_QNM_range::Tuple{<:Real, <:Real} = (-2.0, 2.0),
-        A_range::Union{Nothing, Tuple{<:Real, <:Real}} = nothing,
+        A_QNM_range::Union{Nothing, Tuple{<:Real, <:Real}} = nothing,
         saveat::Union{Real, AbstractVector{<:Real}, Nothing} = 0.01,
         seed::Integer = 5,
     )
-    actual_A_MIS_range = if !isnothing(A_MIS_range)
-        A_MIS_range
-    elseif !isnothing(A_range)
-        A_range
-    else
-        (-1.0, 10.0)
-    end
+    actual_A_range = !isnothing(A_MIS_range) ? A_MIS_range : A_range
+    actual_B_range = !isnothing(A_QNM_range) ? A_QNM_range : B_range
+
     ics = generate_initial_conditions(
         model,
         n_points;
         T_range = T_range,
-        A_MIS_range = actual_A_MIS_range,
-        A_QNM_range = A_QNM_range,
+        A_range = actual_A_range,
+        B_range = actual_B_range,
         seed = seed,
     )
     solutions = generate_trajectories(model, ics, tspan; saveat = saveat)

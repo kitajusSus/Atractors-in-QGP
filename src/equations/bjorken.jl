@@ -39,31 +39,26 @@ function rhs(u::AbstractVector{<:Real}, model::AbstractHydroModel, τ::Real)
     return SVector(dT, dA)
 end
 
-"""
-RHS dla przepływu Bjorkena w teorii HJSW.
-Układ współrzędnych: u = [T, A_MIS, A_QNM, dA_QNM]
-"""
-function rhs(u::AbstractVector{<:Real}, model::HJSWModel, τ::Real)
-    # 𝚷_MIS = A_MIS * T^4
-    # 𝚷_QNM = A_QNM * T^4
-    #
-    T, A_MIS, A_QNM, dA_QNM = u[1], u[2], u[3], u[4]
-    p = model.params
-    # 𝚷_total = 𝚷_MIS + 𝚷_QNM
+function rhs(u::AbstractVector{<:Real}, model::HJSWModel, t::Real)
+    T, A, B = u[1], u[2], u[3]
 
-    A_total = A_MIS + A_QNM
+    Ω_I = model.omega_I
+    Ω_R = model.omega_R
+    C_η = model.params.eta_over_s
 
-    dT = (T / τ) * (-1.0 / 3.0 + A_total / 6.0)
-    # navier stokes
-    A_NS = 8 / (3 * τ * T) * p.eta_over_s
-    dA_MIS = (A_NS - A_MIS) / (p.tau_pi / T) - (4 * A_MIS) / (3 * τ)
-    # mod holograficzny
-    ω2 = model.omega_R^2 + model.omega_I^2
+    Ω2 = Ω_I^2 + Ω_R^2
 
-    d2A_QNM = (
-        - (2 * model.omega_I * T + 4 / (3 * τ) - dT / T) * dA_QNM
-            - (ω2 * T^2 + (4 * model.omega_I * T) / (3 * τ) - 2 / (9 * τ^2) - (2 * dT) / (3 * τ * T)) * A_QNM
-    )
+    dT = (1.0 / 18.0) * (A - 6.0) * T / t
 
-    return SVector(dT, dA_MIS, dA_QNM, d2A_QNM)
+    dA = B / t
+
+    term1 = A * (- (11.0 * B) / 18.0 - t^2 * T^2 * Ω2)
+    term2 = - (4.0 / 27.0) * (A^2) * (3.0 * t * Ω_I * T - 1.0)
+    term3 = - (1.0 / 27.0) * (A^3)
+    term4 = B * ((2.0 / 3.0) - 2.0 * t * Ω_I * T)
+    term5 = 8.0 * C_η * t * T * Ω2
+
+    dB = (term1 + term2 + term3 + term4 + term5) / t
+
+    return SVector(dT, dA, dB)
 end

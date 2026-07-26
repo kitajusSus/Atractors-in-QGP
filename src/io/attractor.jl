@@ -1,58 +1,124 @@
 using Interpolations
-
 using CSV
 using DataFrames
 using HDF5
 using Serialization
+using StaticArrays
+using DifferentialEquations
 
-
-function attractor_data(model::AbstractHydroModel; tau_max = 5.0, krok = 0.01, temperature_unit::Symbol = :fm)
+function attractor_data(
+        model::AbstractHydroModel;
+        tau_max = 5.0,
+        krok = 0.01,
+        temperature_unit::Symbol = :fm
+    )
     tspan_attr = (0.1, tau_max)
-
     ic_attr = [4, 20]
     sol_attr = solve_hydro(model, ic_attr, tspan_attr; saveat = krok)
-    attractor_matrix = build_dataset([sol_attr]; temperature_unit = temperature_unit)
-
-    return attractor_matrix
+    return build_dataset([sol_attr]; temperature_unit = temperature_unit)
 end
-
 
 function attractor_data(
         model::MISModel;
         tau_max = 5.0,
         krok = 0.01,
         n_interp = 5000,
-        w_min::Real = 1.0e-15
+        w_min::Real = 1.0e-15,
+        kwargs...
     )
-
+    w_min_f = Float64(w_min)
     w_max = Float64(tau_max)
     p = model.params
 
-    A0 = 6 * sqrt(p.eta_over_s / p.tau_pi)
+    A0 = Float64(6 * sqrt(p.eta_over_s / p.tau_pi))
 
+    # Prawa strona równania ODE
     rhs_A(u, _, w) = begin
-        A = u[1]
-        dA = 18 * (8 * p.eta_over_s - w * A - (2 / 9) * p.tau_pi * A^2) /
-            (p.tau_pi * w * (A + 12))
+        A_val = u[1]
+        dA = 18 * (8 * p.eta_over_s - w * A_val - (2 / 9) * p.tau_pi * A_val^2) /
+            (p.tau_pi * w * (A_val + 12))
         return SVector(dA)
     end
 
     problem = ODEProblem(
         rhs_A,
-        SVector(Float64(A0)),
-        (Float64(w_min), w_max),
+        SVector(A0),
+        (w_min_f, w_max),
         nothing
     )
 
     sol = solve(problem, Rodas5(); abstol = 1.0e-9, reltol = 1.0e-9)
 
-    ws = range(w_min, w_max, length = n_interp)
+    ws = range(w_min_f, w_max, length = n_interp)
+    A_vals = first.(sol.(ws))
 
-    A = [sol(w)[1] for w in ws]
-
-    return hcat(collect(ws), ones(length(ws)), A)
+    # STARY KOD: return [ws ones(length(ws)) A_vals]
+    # NOWY KOD: Wypełnienie macierzy [w, T_dummy=1.0, A] (druga kolumna to scaling T dla w = τ*T)
+    return [ws ones(length(ws)) A_vals]
 end
 
+"""
+    build_attractor_interpolant(attractor)
+
+Constructs a robust, non-extrapolating (Flat) interpolation A(ω) from attractor data.
+"""
+function build_attractor_interpolant(attractor::AbstractMatrix{<:Real})
+    Tfm = attractor[:, 2]
+    ω = attractor[:, 1] .* Tfm
+    A = attractor[:, 3]
+
+    p = sortperm(ω)
+    ωsorted = ω[p]
+    Asorted = A[p]
+
+    # STARY KOD:
+    # return linear_interpolation(
+    #     ωsorted,
+    #     Asorted;
+    #     extrapolation_bc = Line()
+    # )
+
+    # NOWY KOD: Użycie Flat() zapobiega wybiciom liniowym do +/- Inf poza zakresem danych
+    return linear_interpolation(
+        ωsorted,
+        Asorted;
+        extrapolation_bc = Flat()
+    )
+end
+
+"""
+    temperature_grid(Tmin, Tmax, n)
+
+Construct a uniform temperature grid of length `n` with physical positivity safety checks.
+"""
+function temperature_grid(T_values::AbstractVector{<:Real}, n::Integer)
+    # STARY KOD:
+    # Tmin = minimum(T_values) * 0.95
+    # Tmax = maximum(T_values) * 1.05
+
+    # NOWY KOD: Zabezpieczenie przed temperaturą <= 0 (Tmin >= 1e-6)
+    Tmin = max(minimum(T_values) * 0.95, 1.0e-6)
+    Tmax = maximum(T_values) * 1.05
+    return temperature_grid(Tmin, Tmax, n)
+end
+
+function temperature_grid(Tmin::Real, Tmax::Real, n::Integer)
+    @assert n > 0 "Temperature grid must contain at least one point."
+
+    # STARY KOD:
+    # if n == 1
+    #     return [(Tmin + Tmax) / 2]
+    # end
+    # return range(Tmin, Tmax; length = n)
+
+    # NOWY KOD: Zabezpieczenie Tmin_safe przed wartościami niedodatnimi
+    Tmin_safe = max(Tmin, 1.0e-6)
+    if n == 1
+        return [(Tmin_safe + Tmax) / 2]
+    end
+
+    return range(Tmin_safe, Tmax; length = n)
+end
 
 """
     get_attractor_line(...)
@@ -67,7 +133,6 @@ function get_attractor_line(
         ydef;
         n_points::Int = 200
     )
-
     _, xmap = resolve_def(xdef)
     _, ymap = resolve_def(ydef)
 
@@ -77,15 +142,13 @@ function get_attractor_line(
         feature_cols = 1:size(dataset, 2)
     )
 
-    Tmin = minimum(slice[:, 2])
-    Tmax = maximum(slice[:, 2])
+    # STARY KOD:
+    # Tmin = minimum(slice[:, 2])
+    # Tmax = maximum(slice[:, 2])
+    # Tgrid = range(Tmin * 0.0001, Tmax * 10; length = n_points)
 
-    Tgrid = range(
-        Tmin * 0.0001,
-        Tmax * 10;
-        length = n_points
-    )
-
+    # NOWY KOD: Użycie przetestowanej funkcji temperature_grid z zabezpieczeniem Tmin > 0
+    Tgrid = temperature_grid(slice[:, 2], n_points)
     Aω = build_attractor_interpolant(attractor)
 
     x = Vector{Float64}(undef, n_points)
@@ -93,81 +156,21 @@ function get_attractor_line(
 
     ncols = size(dataset, 2)
 
+    # STARY KOD: alokacja state = zeros(Float64, ncols) wewnątrz pętli for
+    # NOWY KOD: alokacja state raz przed pętlą (redukcja alokacji pamięci)
+    state = zeros(Float64, ncols)
+    state[1] = τ
+
     for (i, T) in enumerate(Tgrid)
-
-        # T_fm = T > 50 ? T * FM_PER_MEV : T
-        T_fm = T
-
-        ω = τ * T_fm
-
-        state = zeros(Float64, ncols)
-
-        state[1] = τ
+        ω = τ * T
         state[2] = T
         state[3] = Aω(ω)
 
         x[i] = xmap(state, slice)
         y[i] = ymap(state, slice)
-
     end
 
     return (; x, y)
-end
-
-"""
-    build_attractor_interpolant(attractor)
-
-Construct an interpolation A(ω) from attractor data.
-"""
-function build_attractor_interpolant(
-        attractor::AbstractMatrix{<:Real}
-    )
-
-    # T_is_mev = mean(attractor[:, 2]) > 50.0
-
-    # Tfm = T_is_mev ?
-    #     attractor[:, 2] .* FM_PER_MEV :
-    #     attractor[:, 2]
-    Tfm = attractor[:, 2]
-
-    ω = attractor[:, 1] .* Tfm
-    A = attractor[:, 3]
-
-    p = sortperm(ω)
-
-    ωsorted = ω[p]
-    Asorted = A[p]
-
-    return linear_interpolation(
-        ωsorted,
-        Asorted;
-        extrapolation_bc = Line()
-    )
-end
-
-"""
-    temperature_grid(T_values::AbstractVector{<:Real}, n::Integer)
-
-Construct a uniform temperature grid of length `n` from 95% of the minimum
-to 105% of the maximum of `T_values`.
-"""
-function temperature_grid(T_values::AbstractVector{<:Real}, n::Integer)
-    Tmin = minimum(T_values) * 0.95
-    Tmax = maximum(T_values) * 1.05
-    return temperature_grid(Tmin, Tmax, n)
-end
-
-function temperature_grid(Tmin::Real, Tmax::Real, n::Integer)
-    @assert n > 0 "temperature grid must contain at least one point."
-    if n == 1
-        return [(Tmin + Tmax) / 2]
-    end
-
-    return range(
-        Tmin,
-        Tmax;
-        length = n
-    )
 end
 
 function interpolate_attractor_state(
@@ -176,31 +179,25 @@ function interpolate_attractor_state(
         τ::Real,
         T::Real
     ) where {S}
-    omega = attractor[:, 1] .* attractor[:, 2]
-    order = sortperm(omega)
-    omega_sorted = omega[order]
-    attr_sorted = attractor[order, :]
+    # STARY KOD:
+    # omega = attractor[:, 1] .* attractor[:, 2]
+    # order = sortperm(omega)
+    # omega_sorted = omega[order]
+    # attr_sorted = attractor[order, :]
+    # target = τ * T
+    # ... wiersze searchsortedfirst oraz rzutowania ...
 
+    # NOWY KOD: Szybkie wyliczenie wartości z pre-kompilowanego interpolanta Interpolations.jl z Flat()
+    Aω = build_attractor_interpolant(attractor)
     target = τ * T
+
     state = Vector{S}(undef, size(dataset, 2))
     state[1] = τ
     state[2] = T
+    state[3] = Aω(target)
 
-    n_copy = min(size(dataset, 2), size(attractor, 2))
-    if target <= omega_sorted[1]
-        state[3:n_copy] .= attr_sorted[1, 3:n_copy]
-    elseif target >= omega_sorted[end]
-        state[3:n_copy] .= attr_sorted[end, 3:n_copy]
-    else
-        hi = searchsortedfirst(omega_sorted, target)
-        lo = hi - 1
-        weight = (target - omega_sorted[lo]) / (omega_sorted[hi] - omega_sorted[lo])
-        state[3:n_copy] .= (1 - weight) .* attr_sorted[lo, 3:n_copy] .+
-            weight .* attr_sorted[hi, 3:n_copy]
-    end
-
-    if size(dataset, 2) > n_copy
-        state[(n_copy + 1):end] .= zero(S)
+    if size(dataset, 2) > 3
+        state[4:end] .= zero(S)
     end
     return state
 end
@@ -208,8 +205,7 @@ end
 """
     get_attractor_line_for_frame(dataset::AbstractMatrix{<:Real}, attractor_universe::AbstractMatrix{<:Real}, t::Real, xdef, ydef; limits=nothing, n_points=150)
 
-Oblicza dokładne współrzędne linii teoretycznego atraktora dla wybranej klatki czasowej `t`,
-dopasowując zakres i ewentualną normalizację do punktów numerycznych z symulacji (`dataset`).
+Oblicza dokładne współrzędne linii teoretycznego atraktora dla wybranej klatki czasowej `t`.
 """
 function get_attractor_line_for_frame(
         dataset::AbstractMatrix{<:Real},
@@ -232,7 +228,6 @@ function get_attractor_line_for_frame(
     )
     τ = cloud_slice[1, 1]
 
-    # Helper function to convert axis value back to temperature T
     get_T_from_val = (val, def) -> begin
         if def === :T
             return val
@@ -260,17 +255,34 @@ function get_attractor_line_for_frame(
         minimum(dataset[:, 2]) * 0.95, maximum(dataset[:, 2]) * 1.05
     end
 
-    # Ensure Tmin < Tmax
     if Tmin > Tmax
         Tmin, Tmax = Tmax, Tmin
     end
 
     T_grid = temperature_grid(Tmin, Tmax, n_points)
+
+    # STARY KOD: Wewnątrz pętli wywoływano interpolate_attractor_state, 
+    # co przeliczało sortperm i searchsortedfirst przy każdym punkcie T!
+    # for (i, T) in enumerate(T_grid)
+    #     state = interpolate_attractor_state(dataset, attractor_universe, τ, T)
+    #     x[i] = xfn(state, cloud_slice)
+    #     y[i] = yfn(state, cloud_slice)
+    # end
+
+    # NOWY KOD: Budujemy interpolant RAZ przed pętlą i alokujemy bufor `state` raz:
+    Aω = build_attractor_interpolant(attractor_universe)
+
     x = Vector{Float64}(undef, n_points)
     y = Vector{Float64}(undef, n_points)
 
+    ncols = size(dataset, 2)
+    state = zeros(Float64, ncols)
+    state[1] = τ
+
     for (i, T) in enumerate(T_grid)
-        state = interpolate_attractor_state(dataset, attractor_universe, τ, T)
+        state[2] = T
+        state[3] = Aω(τ * T)
+
         x[i] = xfn(state, cloud_slice)
         y[i] = yfn(state, cloud_slice)
     end

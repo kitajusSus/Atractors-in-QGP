@@ -332,22 +332,23 @@ using GLMakie
         model = HJSWModel()
         @test model.omega_R ≈ 9.8
         @test model.omega_I ≈ 8.629
+        @test model.C_eta ≈ 1 / (4 * π)
 
-        ics = generate_initial_conditions(model, 5; T_range=(800.0, 1000.0), A_MIS_range=(-1.0, 1.0), A_QNM_range=(-0.5, 0.5))
-        @test eltype(ics) == SVector{4, Float64}
+        ics = generate_initial_conditions(model, 5; T_range=(800.0, 1000.0), A_range=(-1.0, 1.0), B_range=(-0.5, 0.5))
+        @test eltype(ics) == SVector{3, Float64}
         @test length(ics) == 5
 
         sols = generate_trajectories(model, ics, (0.22, 0.3); saveat=0.02, parallel=:serial)
         @test length(sols) == 5
 
         dataset = build_dataset(sols)
-        @test size(dataset, 2) == 5 # [tau, T, A_MIS, A_QNM, dA_QNM]
+        @test size(dataset, 2) == 4 # [tau, T, A, B]
         @test all(isfinite, dataset)
 
-        # check that PCA and dimension scanner work on this 5-column dataset:
+        # check that PCA and dimension scanner work on this 4-column dataset:
         wynik_dim = scan_dimension_from_data(dataset)
         @test length(wynik_dim.taus) > 0
-        @test all(d -> 1.0 <= d <= 4.0, wynik_dim.dimensions)
+        @test all(d -> 1.0 <= d <= 3.0, wynik_dim.dimensions)
 
         wynik_pca = run_pca_per_time(dataset; n_components=2)
         @test length(wynik_pca.taus) > 0
@@ -356,7 +357,7 @@ using GLMakie
         # test run_main with HJSWModel
         hjsw_res = run_main(model, n_points = 5, tspan = (0.2, 0.3), T_range = (200.0, 1400.0), A_range = (-1.0, 8.0), seed = 5)
         @test length(hjsw_res.solutions) == 5
-        @test size(hjsw_res.dataset, 2) == 5
+        @test size(hjsw_res.dataset, 2) == 4
     end
 
     @testset "Stable LPCA and Principal Angles" begin

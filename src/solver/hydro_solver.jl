@@ -37,7 +37,7 @@ function solve_hydro(
         saveat = nothing,
     )
     N = length(u0)
-    @assert (N == 2 || N == 4) "Initial state must contain [T, A] (2D) or [T, A_MIS, A_QNM, dA_QNM] (4D)."
+    @assert (N == 2 || N == 3 || N == 4) "Initial state must contain [T, A] (2D), [T, A, B] (3D), or 4D state."
     if tspan[1] >= tspan[2]
         throw(DomainError(tspan, "tspan must satisfy t0 < t1."))
     end
