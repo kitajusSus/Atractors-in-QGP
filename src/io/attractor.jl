@@ -52,8 +52,6 @@ function attractor_data(
     ws = range(w_min_f, w_max, length = n_interp)
     A_vals = first.(sol.(ws))
 
-    # STARY KOD: return [ws ones(length(ws)) A_vals]
-    # NOWY KOD: Wypełnienie macierzy [w, T_dummy=1.0, A] (druga kolumna to scaling T dla w = τ*T)
     return [ws ones(length(ws)) A_vals]
 end
 
@@ -71,14 +69,12 @@ function build_attractor_interpolant(attractor::AbstractMatrix{<:Real})
     ωsorted = ω[p]
     Asorted = A[p]
 
-    # STARY KOD:
     # return linear_interpolation(
     #     ωsorted,
     #     Asorted;
     #     extrapolation_bc = Line()
     # )
 
-    # NOWY KOD: Użycie Flat() zapobiega wybiciom liniowym do +/- Inf poza zakresem danych
     return linear_interpolation(
         ωsorted,
         Asorted;
@@ -92,11 +88,9 @@ end
 Construct a uniform temperature grid of length `n` with physical positivity safety checks.
 """
 function temperature_grid(T_values::AbstractVector{<:Real}, n::Integer)
-    # STARY KOD:
     # Tmin = minimum(T_values) * 0.95
     # Tmax = maximum(T_values) * 1.05
 
-    # NOWY KOD: Zabezpieczenie przed temperaturą <= 0 (Tmin >= 1e-6)
     Tmin = max(minimum(T_values) * 0.95, 1.0e-6)
     Tmax = maximum(T_values) * 1.05
     return temperature_grid(Tmin, Tmax, n)
@@ -105,13 +99,11 @@ end
 function temperature_grid(Tmin::Real, Tmax::Real, n::Integer)
     @assert n > 0 "Temperature grid must contain at least one point."
 
-    # STARY KOD:
     # if n == 1
     #     return [(Tmin + Tmax) / 2]
     # end
     # return range(Tmin, Tmax; length = n)
 
-    # NOWY KOD: Zabezpieczenie Tmin_safe przed wartościami niedodatnimi
     Tmin_safe = max(Tmin, 1.0e-6)
     if n == 1
         return [(Tmin_safe + Tmax) / 2]
@@ -142,12 +134,10 @@ function get_attractor_line(
         feature_cols = 1:size(dataset, 2)
     )
 
-    # STARY KOD:
     # Tmin = minimum(slice[:, 2])
     # Tmax = maximum(slice[:, 2])
     # Tgrid = range(Tmin * 0.0001, Tmax * 10; length = n_points)
 
-    # NOWY KOD: Użycie przetestowanej funkcji temperature_grid z zabezpieczeniem Tmin > 0
     Tgrid = temperature_grid(slice[:, 2], n_points)
     Aω = build_attractor_interpolant(attractor)
 
@@ -155,9 +145,6 @@ function get_attractor_line(
     y = Vector{Float64}(undef, n_points)
 
     ncols = size(dataset, 2)
-
-    # STARY KOD: alokacja state = zeros(Float64, ncols) wewnątrz pętli for
-    # NOWY KOD: alokacja state raz przed pętlą (redukcja alokacji pamięci)
     state = zeros(Float64, ncols)
     state[1] = τ
 
@@ -179,15 +166,13 @@ function interpolate_attractor_state(
         τ::Real,
         T::Real
     ) where {S}
-    # STARY KOD:
     # omega = attractor[:, 1] .* attractor[:, 2]
     # order = sortperm(omega)
     # omega_sorted = omega[order]
     # attr_sorted = attractor[order, :]
     # target = τ * T
-    # ... wiersze searchsortedfirst oraz rzutowania ...
+    # ...
 
-    # NOWY KOD: Szybkie wyliczenie wartości z pre-kompilowanego interpolanta Interpolations.jl z Flat()
     Aω = build_attractor_interpolant(attractor)
     target = τ * T
 
@@ -261,15 +246,12 @@ function get_attractor_line_for_frame(
 
     T_grid = temperature_grid(Tmin, Tmax, n_points)
 
-    # STARY KOD: Wewnątrz pętli wywoływano interpolate_attractor_state, 
-    # co przeliczało sortperm i searchsortedfirst przy każdym punkcie T!
     # for (i, T) in enumerate(T_grid)
     #     state = interpolate_attractor_state(dataset, attractor_universe, τ, T)
     #     x[i] = xfn(state, cloud_slice)
     #     y[i] = yfn(state, cloud_slice)
     # end
 
-    # NOWY KOD: Budujemy interpolant RAZ przed pętlą i alokujemy bufor `state` raz:
     Aω = build_attractor_interpolant(attractor_universe)
 
     x = Vector{Float64}(undef, n_points)

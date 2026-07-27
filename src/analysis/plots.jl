@@ -1456,7 +1456,7 @@ end
         xlabel = L"\tau\,[\mathrm{fm}/c]",
         ylabel = L"\text{Średni wymiar lokalny}",
         xticks = 0:0.25:maximum(dataset_loaded[:, 1]),
-        yticks = 1:0.1:2,
+        # yticks = 1:0.1:2,
 
         xautolimitmargin = (0.0, 0.05),
         yautolimitmargin = (0.05, 0.05)

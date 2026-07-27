@@ -113,12 +113,12 @@ function save_dataset(path::AbstractString, data::AbstractMatrix{<:Real})
     lower = lowercase(path)
     if endswith(lower, ".csv")
         return save_dataset_csv(path, data)
-    elseif endswith(lower, ".h5") || endswith(lower, ".hdf5")
+    elseif endswith(lower, ".h5") || endswith(lower, ".hdf5") || endswith(lower, ".hd5")
         return save_dataset_h5(path, data)
     elseif endswith(lower, ".jls")
         return save_dataset_jls(path, data)
     else
-        error("Unsupported format. Use .csv, .h5/.hdf5, or .jls")
+        error("Unsupported format. Use .csv, .h5/.hdf5/.hd5, or .jls")
     end
 end
 
@@ -129,11 +129,11 @@ function load_dataset(path::AbstractString)
     lower = lowercase(path)
     if endswith(lower, ".csv")
         return load_dataset_csv(path)
-    elseif endswith(lower, ".h5") || endswith(lower, ".hdf5")
+    elseif endswith(lower, ".h5") || endswith(lower, ".hdf5") || endswith(lower, ".hd5")
         return load_dataset_h5(path)
     elseif endswith(lower, ".jls")
         return load_dataset_jls(path)
     else
-        error("Unsupported format. Use .csv, .h5/.hdf5, or .jls")
+        error("Unsupported format. Use .csv, .h5/.hdf5/.hd5, or .jls")
     end
 end

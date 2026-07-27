@@ -10,16 +10,18 @@ end
 
 """
     HJSWModel(; eta_over_s, tau_pi, lambda1, omega_R, omega_I)
-
-Tworzy model HJSW z domyślnymi wartościami z artykułu dla plazmy N=4 SYM.
 """
 function HJSWModel(;
-        eta_over_s::Real = 1 / (4 * π),
-        tau_pi::Real = 1 / (2 * π),
-        lambda1::Real = 0.0,
-        omega_R::Real = 9.8,
-        omega_I::Real = 8.629,
+        # eta_over_s::Real = 1 / (4 * π),
+        eta_over_s::Real = 0.0795775,
+        # omega_R::Real = 9.8,
+        # omega_I::Real = 8.629,
+        omega_R::Real = 9.80005,
+        omega_I::Real = 2.87631,
     )
+
+    tau_pi = 1 / (2 * π)
+    lambda1 = 0.0
     T = promote_type(typeof(eta_over_s), typeof(tau_pi), typeof(lambda1), typeof(omega_R), typeof(omega_I))
     params = HydroParams(T(eta_over_s), T(tau_pi), T(lambda1))
     return HJSWModel(params, T(omega_R), T(omega_I))
@@ -32,4 +34,3 @@ function Base.getproperty(model::HJSWModel, sym::Symbol)
         return getfield(model, sym)
     end
 end
-

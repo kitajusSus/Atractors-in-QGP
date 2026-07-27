@@ -5,9 +5,8 @@ using LinearAlgebra
 using AtractorsQGP
 
 function normalizuj_max(X_features::AbstractMatrix{<:Real})
-    max_vals = maximum(abs.(X_features), dims = 1)
-    max_vals[max_vals .== 0.0] .= 1.0
-    return X_features ./ max_vals
+    max_per_column = maximum(abs, X_features, dims = 1)
+    return X_features ./ max_per_column
 end
 
 function get_tau_slice(

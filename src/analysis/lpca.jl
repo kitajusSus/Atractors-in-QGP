@@ -5,34 +5,34 @@ using Statistics
 @views function dims(X; k = 12, tol = 1.0e-8)
     n, d = size(X)
     k = min(k, n)
-    
+
     tree = KDTree(X')
     out = zeros(Float64, n)
-    
+
     Y_buf = zeros(Float64, k, d)
     C_buf = zeros(Float64, d, d)
-    
+
     knn_idxs, _ = knn(tree, X', k, true)
-    
+
     for i in 1:n
         idxs = knn_idxs[i]
-        
+
         Y = Y_buf[1:k, :]
         for r in 1:k
             for c in 1:d
                 Y[r, c] = X[idxs[r], c]
             end
         end
-        
+
         μ = mean(Y, dims = 1)
         Y .-= μ
-        
+
         C = C_buf[1:d, 1:d]
         mul!(C, Y', Y)
         C ./= k
-        
+
         λ = eigvals!(Symmetric(C))
-        
+
         sum_λ = sum(λ)
         if sum_λ > 0.0
             cnt = 0
@@ -50,13 +50,8 @@ using Statistics
 end
 
 function normalize_max(X)
-    scale = maximum(abs.(X), dims = 1)
-    for j in eachindex(scale)
-        if scale[j] == 0
-            scale[j] = 1
-        end
-    end
-    return X ./ scale
+    max_per_column = maximum(abs, X, dims = 1)
+    return X ./ max_per_column
 end
 
 function swiss_roll(n; noise = 0.0)
@@ -84,7 +79,7 @@ end
 
     tol = 0.01
     n_selected = length(selected_taus)
-    
+
     tau_values = zeros(Float64, n_selected)
     mean_dims = zeros(Float64, n_selected)
     std_dims = zeros(Float64, n_selected)
@@ -92,7 +87,7 @@ end
     for (idx, τ) in enumerate(selected_taus)
         _, X_tau = get_tau_slice(dataset, τ; feature_cols = feature_cols)
         X_norm = normalize_max(X_tau)
-        
+
         local_dims = dims(X_norm; k = k, tol = tol)
 
         tau_values[idx] = τ
@@ -120,7 +115,7 @@ end
         X_tau = dataset[mask, cols]
         n_points = size(X_tau, 1)
         k = min(K, n_points - 1)
-        
+
         if k < 2
             d_bar[nτ] = 1.0
             continue
@@ -131,22 +126,22 @@ end
 
         idxs, _ = knn(tree, X_norm', k + 1, true)
         d_sum = 0
-        
+
         X_local_buf = zeros(Float64, k, d)
 
         for i in 1:n_points
             neighbors = idxs[i][2:end]
-            
+
             X_local = X_local_buf[1:k, :]
             for r in 1:k
                 for c in 1:d
                     X_local[r, c] = X_norm[neighbors[r], c]
                 end
             end
-            
+
             X_local .-= mean(X_local, dims = 1)
             S = svdvals!(X_local)
-            
+
             λ_sum = 0.0
             for s in S
                 λ_sum += s^2
@@ -183,9 +178,6 @@ end
     return (; taus, d_bar, tau_LPCA)
 end
 
-# NIŻEJ SĄ TYLKO JAKIEŚ TESTOWE GŁUPOTY NIE JEST TO LEKTURĄ OBOWIĄZKOWĄ DLA CIEBIE MATEUSZ
-
-
 
 @views function compute_lpca_entropy(
         dataset::AbstractMatrix{<:Real},
@@ -206,7 +198,7 @@ end
     tau_values = zeros(Float64, n_selected)
     mean_entropy = zeros(Float64, n_selected)
     std_entropy = zeros(Float64, n_selected)
-    
+
     d = length(feature_cols)
 
     for (idx, τ) in enumerate(selected_taus)
@@ -231,29 +223,29 @@ end
 
         for i in 1:n_points
             neighbors_idx = idxs_knn[i]
-            
+
             Y = Y_buf[1:k_local, :]
             for r in 1:k_local
                 for c in 1:d
                     Y[r, c] = X_norm[neighbors_idx[r], c]
                 end
             end
-            
+
             μ = mean(Y, dims = 1)
             Y .-= μ
-            
+
             C = C_buf[1:d, 1:d]
             mul!(C, Y', Y)
             C ./= k_local
-            
+
             λ = eigvals!(Symmetric(C))
             λ .= max.(λ, 0.0)
             λ_sum = sum(λ)
-            
+
             if λ_sum ≈ 0.0
                 continue
             end
-            
+
             S = 0.0
             r_count = 0
             for val in λ
@@ -263,14 +255,14 @@ end
                     r_count += 1
                 end
             end
-            
+
             if r_count <= 1
                 continue
             end
-            
+
             entropies[i] = S / log(r_count)
         end
-        
+
         tau_values[idx] = τ
         mean_entropy[idx] = mean(entropies)
         std_entropy[idx] = std(entropies)
@@ -329,7 +321,7 @@ function compute_stable_lpca_collapse(
             entropies = zeros(Float64, n_points)
             for i in 1:n_points
                 @views neighbor_idxs = knn_idxs[i][1:k_actual]
-                
+
                 Y = Y_buf[1:k_actual, :]
                 for r in 1:k_actual
                     for c in 1:d
@@ -343,7 +335,7 @@ function compute_stable_lpca_collapse(
                 C = C_buf[1:d, 1:d]
                 mul!(C, Y', Y)
                 C ./= k_actual
-                
+
                 λ = eigvals!(Symmetric(C))
                 λ .= max.(λ, 0.0)
                 sum_λ = sum(λ)
@@ -367,7 +359,7 @@ function compute_stable_lpca_collapse(
                     entropies[i] = S_i / log(d)
                 elseif norm_type == :active
                     entropies[i] = r_count <= 1 ? 0.0 : S_i / log(r_count)
-                else 
+                else
                     entropies[i] = S_i
                 end
             end

@@ -51,26 +51,21 @@ function generate_initial_conditions(
         model::HJSWModel,
         n::Integer = 5000;
         T_range::Tuple{<:Real, <:Real} = (200.0, 1400.0),
-        A_range::Union{Nothing, Tuple{<:Real, <:Real}} = nothing,
-        A_MIS_range::Union{Nothing, Tuple{<:Real, <:Real}} = nothing,
-        B_range::Union{Nothing, Tuple{<:Real, <:Real}} = nothing,
-        A_QNM_range::Union{Nothing, Tuple{<:Real, <:Real}} = nothing,
+        A_range::Tuple{<:Real, <:Real} = (-1.0, 10.0),
+        B_range::Tuple{<:Real, <:Real} = (-2.0, 2.0),
         temperature_unit::Symbol = :MeV,
         seed::Integer = 5,
-        rng::Union{AbstractRNG, Nothing} = nothing,
     )
     @assert n > 0 "n must be positive."
-    actual_A_range = !isnothing(A_range) ? A_range : (!isnothing(A_MIS_range) ? A_MIS_range : (-1.0, 10.0))
-    actual_B_range = !isnothing(B_range) ? B_range : (!isnothing(A_QNM_range) ? A_QNM_range : (-2.0, 2.0))
 
-    rng_local = isnothing(rng) ? Xoshiro(seed) : rng
+    rng_local = Xoshiro(seed)
     ics = Vector{SVector{3, Float64}}(undef, n)
 
     for i in eachindex(ics)
         T0 = rand(rng_local) * (T_range[2] - T_range[1]) + T_range[1]
         T0_fm = temperature_to_fm(T0, temperature_unit)
-        A0 = rand(rng_local) * (actual_A_range[2] - actual_A_range[1]) + actual_A_range[1]
-        B0 = rand(rng_local) * (actual_B_range[2] - actual_B_range[1]) + actual_B_range[1]
+        A0 = rand(rng_local) * (A_range[2] - A_range[1]) + A_range[1]
+        B0 = rand(rng_local) * (B_range[2] - B_range[1]) + B_range[1]
 
         ics[i] = SVector{3, Float64}(T0_fm, A0, B0)
     end

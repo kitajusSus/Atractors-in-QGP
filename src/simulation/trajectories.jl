@@ -76,7 +76,6 @@ function build_dataset(solutions::AbstractVector; temperature_unit::Symbol = :fm
     n_cols = 1 + state_dim
     n_rows = sum(length(sol.t) for sol in solutions)
     data = Matrix{Float64}(undef, n_rows, n_cols)
-    hbarc = 197.3269804
 
     row_idx = 1
     @inbounds for sol in solutions
@@ -86,15 +85,15 @@ function build_dataset(solutions::AbstractVector; temperature_unit::Symbol = :fm
 
             if all_finite
                 data[row_idx, 1] = tau
-                
+
                 T = sol.u[i][1]
                 if temperature_unit === :MeV
-                    T = T * hbarc
+                    T = T * MEV_PER_FM
                 end
                 data[row_idx, 2] = T
-                
+
                 for col in 3:n_cols
-                    data[row_idx, col] = sol.u[i][col-1]
+                    data[row_idx, col] = sol.u[i][col - 1]
                 end
 
                 row_idx += 1
@@ -102,5 +101,5 @@ function build_dataset(solutions::AbstractVector; temperature_unit::Symbol = :fm
         end
     end
 
-    return data[1:row_idx-1, :]
+    return data[1:(row_idx - 1), :]
 end

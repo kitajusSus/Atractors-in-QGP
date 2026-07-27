@@ -107,13 +107,18 @@ function run_main(
         n_points::Integer = 5000,
         tspan::Tuple{<:Real, <:Real} = (0.2, 1.2),
         T_range::Tuple{<:Real, <:Real} = (200.0, 1400.0),
-        A_range::Tuple{<:Real, <:Real} = (-1, 7),
+        A_range::Tuple{<:Real, <:Real} = (-1.0, 7.0),
+        temperature_unit::Symbol = :MeV,
         saveat::Union{Real, AbstractVector{<:Real}, Nothing} = 0.01,
         seed::Integer = 5,
+        output_file::Union{String, Nothing} = nothing,
     )
-    ics = generate_initial_conditions(n_points; T_range = T_range, A_range = A_range, seed = seed)
+    ics = generate_initial_conditions(n_points; T_range = T_range, A_range = A_range, temperature_unit = temperature_unit, seed = seed)
     solutions = generate_trajectories(model, ics, tspan; saveat = saveat)
     dataset = build_dataset(solutions)
+    if output_file !== nothing
+        save_dataset(output_file, dataset)
+    end
     return (solutions = solutions, dataset = dataset)
 end
 
@@ -124,24 +129,26 @@ function run_main(
         T_range::Tuple{<:Real, <:Real} = (200.0, 1400.0),
         A_range::Tuple{<:Real, <:Real} = (-1.0, 10.0),
         B_range::Tuple{<:Real, <:Real} = (-2.0, 2.0),
-        A_MIS_range::Union{Nothing, Tuple{<:Real, <:Real}} = nothing,
-        A_QNM_range::Union{Nothing, Tuple{<:Real, <:Real}} = nothing,
+        temperature_unit::Symbol = :MeV,
         saveat::Union{Real, AbstractVector{<:Real}, Nothing} = 0.01,
         seed::Integer = 5,
+        output_file::Union{String, Nothing} = nothing,
     )
-    actual_A_range = !isnothing(A_MIS_range) ? A_MIS_range : A_range
-    actual_B_range = !isnothing(A_QNM_range) ? A_QNM_range : B_range
 
     ics = generate_initial_conditions(
         model,
         n_points;
         T_range = T_range,
-        A_range = actual_A_range,
-        B_range = actual_B_range,
+        A_range = A_range,
+        B_range = B_range,
+        temperature_unit = temperature_unit,
         seed = seed,
     )
     solutions = generate_trajectories(model, ics, tspan; saveat = saveat)
     dataset = build_dataset(solutions)
+    if output_file !== nothing
+        save_dataset(output_file, dataset)
+    end
     return (solutions = solutions, dataset = dataset)
 end
 

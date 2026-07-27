@@ -43,6 +43,8 @@ function solve_hydro(
     end
 
     Tstate = promote_type(eltype(u0), typeof(tspan[1]), typeof(tspan[2]), Float64)
+    # T0_val = u0[1] > 50.0 ? u0[1] / 197.3269804 : u0[1]
+    # state0 = setindex(SVector{N, Tstate}(u0...), Tstate(T0_val), 1)
     state0 = SVector{N, Tstate}(u0...)
     problem = ODEProblem(rhs, state0, (Tstate(tspan[1]), Tstate(tspan[2])), model)
 
