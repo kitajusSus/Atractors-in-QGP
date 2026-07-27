@@ -17,7 +17,6 @@ ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
 GLMakie = "e9467ef8-e4e7-5192-8a1a-b1aee30e663a"
 HDF5 = "f67ccb44-e63f-5c2f-98bd-6dc0ccc4ba2f"
 Interpolations = "a98d9a8b-a2ab-59e6-89dd-64a1c18fca59"
-JET = "c3a54625-cd67-489e-a8e7-0a5a0ff4e31b"
 KrylovKit = "0b1a1467-8014-51b9-945f-bf0ae24f4b77"
 LaTeXStrings = "b964fa9f-0449-5b57-a5c2-d3ea65f4040f"
 Latexify = "23fbe1c1-3f47-55db-b15f-69d7ec21a316"
@@ -50,7 +49,7 @@ DifferentialEquations = "8"
 Distances = "0.10"
 Flux = "0.16"
 ForwardDiff = "1.3"
-GLMakie = "0.15"
+GLMakie = "0.13"
 HDF5 = "0.17"
 Interpolations = "0.16"
 JET = "0.11"
@@ -68,11 +67,12 @@ ProgressMeter = "1"
 StaticArrays = "1"
 Symbolics = "7"
 Zygote = "0.7"
-julia = "1.12"
+julia = "1.10"
 
 
 [extras]
+JET = "c3a54625-cd67-489e-a8e7-0a5a0ff4e31b"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Test"]
+test = ["Test", "JET"]

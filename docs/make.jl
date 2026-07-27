@@ -1,9 +1,9 @@
 using Documenter
-using AtractorsQGP
+using AttractorsQGP
 
 makedocs(
-    sitename = "AtractorsQGP.jl",
-    modules = [AtractorsQGP],
+    sitename = "AttractorsQGP.jl",
+    modules = [AttractorsQGP],
     format = Documenter.HTML(
         prettyurls = get(ENV, "CI", nothing) == "true",
         ansicolor = true
