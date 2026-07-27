@@ -10,38 +10,33 @@ function generate_trajectories(
         initial_conditions::AbstractVector{<:AbstractVector{<:Real}},
         tspan::Tuple{<:Real, <:Real};
         saveat = nothing,
-        parallel::Symbol = :serial,
+        parallel = nothing,
         abstol::Real = 1.0e-8,
         reltol::Real = 1.0e-8,
         solver = Rodas5(),
     )
-    if parallel === :threads
-        solutions = Vector{Any}(undef, length(initial_conditions))
-        Threads.@threads for index in eachindex(initial_conditions)
-            solutions[index] = solve_hydro(
-                model,
-                initial_conditions[index],
-                tspan;
-                solver = solver,
-                abstol = abstol,
-                reltol = reltol,
-                saveat = saveat,
-            )
-        end
-        return solutions
-    else
-        return [
-            solve_hydro(
-                model,
-                u0,
-                tspan;
-                solver = solver,
-                abstol = abstol,
-                reltol = reltol,
-                saveat = saveat,
-            ) for u0 in initial_conditions
-        ]
+    first_initial_state = SVector{length(initial_conditions[1]), Float64}(initial_conditions[1]...)
+    base_problem = ODEProblem(rhs, first_initial_state, tspan, model)
+
+    function problem_generator_function(problem, second_argument, remaining_arguments...)
+        trajectory_index = isempty(remaining_arguments) ? (second_argument isa Integer ? second_argument : second_argument.sim_id) : second_argument
+        return remake(problem, u0 = initial_conditions[trajectory_index])
     end
+
+    ensemble_problem = EnsembleProblem(base_problem; prob_func = problem_generator_function)
+
+    extra_keyword_arguments = isnothing(saveat) ? (;) : (; saveat)
+    ensemble_solution = solve(
+        ensemble_problem,
+        solver,
+        EnsembleThreads();
+        trajectories = length(initial_conditions),
+        abstol = abstol,
+        reltol = reltol,
+        extra_keyword_arguments...
+    )
+
+    return ensemble_solution.u
 end
 
 function build_dataset(solutions::AbstractVector; temperature_unit::Symbol = :fm)
