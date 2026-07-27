@@ -15,45 +15,33 @@ function generate_trajectories(
         reltol::Real = 1.0e-8,
         solver = Rodas5(),
     )
-    state_element_type = promote_type(
-        eltype(initial_conditions[1]),
-        typeof(tspan[1]),
-        typeof(tspan[2]),
-        Float64
-    )
-    state_dimension = length(initial_conditions[1])
-    first_initial_state = SVector{state_dimension, state_element_type}(initial_conditions[1]...)
-
-    time_start = state_element_type(tspan[1])
-    time_stop = state_element_type(tspan[2])
-    base_problem = ODEProblem(rhs, first_initial_state, (time_start, time_stop), model)
-
-    function problem_generator_function(problem, second_argument, remaining_arguments...)
-        trajectory_index = if isempty(remaining_arguments)
-            second_argument isa Integer ? second_argument : second_argument.sim_id
-        else
-            second_argument
+    if parallel === :threads
+        solutions = Vector{Any}(undef, length(initial_conditions))
+        Threads.@threads for index in eachindex(initial_conditions)
+            solutions[index] = solve_hydro(
+                model,
+                initial_conditions[index],
+                tspan;
+                solver = solver,
+                abstol = abstol,
+                reltol = reltol,
+                saveat = saveat,
+            )
         end
-        return remake(problem, u0 = initial_conditions[trajectory_index])
+        return solutions
+    else
+        return [
+            solve_hydro(
+                model,
+                u0,
+                tspan;
+                solver = solver,
+                abstol = abstol,
+                reltol = reltol,
+                saveat = saveat,
+            ) for u0 in initial_conditions
+        ]
     end
-
-    ensemble_problem = EnsembleProblem(base_problem; prob_func = problem_generator_function)
-
-    ensemble_algorithm = parallel === :threads ? EnsembleThreads() :
-                         parallel === :split_threads ? EnsembleSplitThreads() : EnsembleSerial()
-
-    extra_keyword_arguments = isnothing(saveat) ? (;) : (; saveat)
-    ensemble_solution = solve(
-        ensemble_problem,
-        solver,
-        ensemble_algorithm;
-        trajectories = length(initial_conditions),
-        abstol = abstol,
-        reltol = reltol,
-        extra_keyword_arguments...
-    )
-
-    return ensemble_solution.u
 end
 
 function build_dataset(solutions::AbstractVector; temperature_unit::Symbol = :fm)
