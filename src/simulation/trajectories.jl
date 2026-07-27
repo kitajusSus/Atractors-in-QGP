@@ -1,77 +1,47 @@
 using DifferentialEquations
-using ProgressMeter
 
+"""
+    generate_trajectories(model, initial_conditions, tspan; saveat=nothing, parallel=:serial)
+
+Generuje wektor rozwiązań równań hydrodynamiki dla zadanych warunków początkowych.
+"""
 function generate_trajectories(
         model::AbstractHydroModel,
         initial_conditions::AbstractVector{<:AbstractVector{<:Real}},
         tspan::Tuple{<:Real, <:Real};
         saveat = nothing,
         parallel::Symbol = :serial,
+        abstol::Real = 1.0e-8,
+        reltol::Real = 1.0e-8,
+        solver = Rodas5(),
     )
-    @assert !isempty(initial_conditions) "At least one initial condition is required."
+    # 1. Bazowy problem różniczkowy dla 1. warunku początkowego
+    Tstate = promote_type(eltype(initial_conditions[1]), typeof(tspan[1]), typeof(tspan[2]), Float64)
+    N = length(initial_conditions[1])
+    u0_first = SVector{N, Tstate}(initial_conditions[1]...)
+    base_prob = ODEProblem(rhs, u0_first, (Tstate(tspan[1]), Tstate(tspan[2])), model)
 
-    first_solution = solve_hydro(model, initial_conditions[1], tspan; saveat = saveat)
-    solType = typeof(first_solution)
-    solutions = Vector{solType}(undef, length(initial_conditions))
-    solutions[1] = first_solution
-
-    if length(initial_conditions) == 1
-        return solutions
-    end
-
-    base_problem = first_solution.prob
-
+    # 2. Definicja problemu zespołowego (kompatybilna ze wszystkimi wersjami SciMLBase)
     function prob_func(prob, arg2, args...)
-        i = if isempty(args)
-            ctx = arg2
-            if hasproperty(ctx, :sim_id)
-                ctx.sim_id
-            else
-                error("Nieznana struktura EnsembleContext. Dostępne pola: $(propertynames(ctx))")
-            end
-        else
-            arg2
-        end
+        i = isempty(args) ? (arg2 isa Integer ? arg2 : arg2.sim_id) : arg2
         return remake(prob, u0 = initial_conditions[i])
     end
+    ensemble_prob = EnsembleProblem(base_prob; prob_func = prob_func)
 
-    pasek = Progress(length(initial_conditions), 1, "Obliczanie trajektorii: ")
+    # 3. Dobór algorytmu równoległości
+    ensemble_alg = parallel === :threads ? EnsembleThreads() :
+                   parallel === :split_threads ? EnsembleSplitThreads() : EnsembleSerial()
 
-    function output_func(sol, arg2, args...)
-        next!(pasek)
-        return (sol, false)
-    end
+    # 4. Rozwiązanie zespołu trajektorii
+    extra_kwargs = isnothing(saveat) ? (;) : (; saveat)
+    ens_sol = solve(ensemble_prob, solver, ensemble_alg;
+                    trajectories = length(initial_conditions),
+                    abstol = abstol, reltol = reltol, extra_kwargs...)
 
-    ensemble_problem = EnsembleProblem(base_problem; prob_func = prob_func, output_func = output_func)
-    ensemble_alg = parallel === :threads ? EnsembleThreads() : EnsembleSerial()
-
-    solve_kwargs = (
-        trajectories = length(initial_conditions),
-        abstol = 1.0e-8,
-        reltol = 1.0e-8,
-    )
-
-    ensemble_solution = if isnothing(saveat)
-        solve(ensemble_problem, Rodas5(), ensemble_alg; solve_kwargs...)
-    else
-        solve(ensemble_problem, Rodas5(), ensemble_alg; solve_kwargs..., saveat = saveat)
-    end
-
-    @inbounds for i in eachindex(solutions)
-        solutions[i] = ensemble_solution.u[i]
-    end
-
-    return solutions
+    return ens_sol.u
 end
 
 function build_dataset(solutions::AbstractVector; temperature_unit::Symbol = :fm)
-    if temperature_unit !== :fm && temperature_unit !== :MeV
-        throw(ArgumentError("temperature_unit must be :fm or :MeV"))
-    end
-    if isempty(solutions)
-        return Matrix{Float64}(undef, 0, 3)
-    end
-
     state_dim = length(solutions[1].u[1])
     n_cols = 1 + state_dim
     n_rows = sum(length(sol.t) for sol in solutions)
@@ -87,8 +57,12 @@ function build_dataset(solutions::AbstractVector; temperature_unit::Symbol = :fm
                 data[row_idx, 1] = tau
 
                 T = sol.u[i][1]
-                if temperature_unit === :MeV
+                if temperature_unit === :fm
+                    # standard fm units
+                elseif temperature_unit === :MeV
                     T = T * MEV_PER_FM
+                else
+                    throw(ArgumentError("Unsupported temperature_unit: $temperature_unit. Expected :fm or :MeV."))
                 end
                 data[row_idx, 2] = T
 

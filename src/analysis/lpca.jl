@@ -98,6 +98,8 @@ end
     return tau_values, mean_dims, std_dims
 end
 
+
+# nizej jest testowe nie ważnbe
 @views function dynamic_lpca_analysis(
         dataset::AbstractMatrix{<:Real};
         K::Int = 15,

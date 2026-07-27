@@ -37,11 +37,6 @@ function solve_hydro(
         saveat = nothing,
     )
     N = length(u0)
-    @assert (N == 2 || N == 3 || N == 4) "Initial state must contain [T, A] (2D), [T, A, B] (3D), or 4D state."
-    if tspan[1] >= tspan[2]
-        throw(DomainError(tspan, "tspan must satisfy t0 < t1."))
-    end
-
     Tstate = promote_type(eltype(u0), typeof(tspan[1]), typeof(tspan[2]), Float64)
     # T0_val = u0[1] > 50.0 ? u0[1] / 197.3269804 : u0[1]
     # state0 = setindex(SVector{N, Tstate}(u0...), Tstate(T0_val), 1)

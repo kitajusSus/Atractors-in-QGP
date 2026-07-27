@@ -56,8 +56,6 @@ function generate_initial_conditions(
         temperature_unit::Symbol = :MeV,
         seed::Integer = 5,
     )
-    @assert n > 0 "n must be positive."
-
     rng_local = Xoshiro(seed)
     ics = Vector{SVector{3, Float64}}(undef, n)
 

@@ -186,27 +186,28 @@ Returns `(idx, Xtau)` where:
 Use `feature_cols` to choose which feature columns (from `1:size(dataset,2)`) are included.
 """
 function get_tau_slice(
-    dataset::AbstractMatrix{<:Real},
-    tau::Real;
-    atol::Real = 1.0e-8,
-    feature_cols = 2:size(dataset, 2),
-    nearest::Bool = true
-)
-    @assert !isempty(feature_cols) "feature_cols must contain at least one column index or symbol."
+        dataset::AbstractMatrix{<:Real},
+        tau::Real;
+        atol::Real = 1.0e-8,
+        feature_cols = 2:size(dataset, 2),
+        nearest::Bool = true
+    )
+    cols = isnothing(feature_cols) ? (2:size(dataset, 2)) : feature_cols
+    @assert !isempty(cols) "feature_cols must contain at least one column index or symbol."
 
     idx = get_tau_slice(view(dataset, :, 1), tau; atol = atol, nearest = nearest)
 
-    if feature_cols isa AbstractVector{<:Integer} || (feature_cols isa AbstractRange && eltype(feature_cols) <: Integer)
-        @assert all(1 <= c <= size(dataset, 2) for c in feature_cols) "feature_cols must point to valid columns."
-        Xtau = @view dataset[idx, feature_cols]
+    if cols isa AbstractVector{<:Integer} || (cols isa AbstractRange && eltype(cols) <: Integer)
+        @assert all(1 <= c <= size(dataset, 2) for c in cols) "feature_cols must point to valid columns."
+        Xtau = @view dataset[idx, cols]
         return idx, Xtau
     else
         selected = dataset[idx, :]
         n_samples = size(selected, 1)
-        n_features = length(feature_cols)
+        n_features = length(cols)
         Xtau = Matrix{Float64}(undef, n_samples, n_features)
-        
-        for (j, col) in enumerate(feature_cols)
+
+        for (j, col) in enumerate(cols)
             if col isa Integer
                 @assert 1 <= col <= size(dataset, 2) "feature column index $col out of bounds."
                 Xtau[:, j] .= selected[:, col]
@@ -250,15 +251,13 @@ function run_pca_per_time(
         atol::Real = 1.0e-8,
         feature_cols = nothing,
     )
-    cols = isnothing(feature_cols) ? collect(2:size(dataset, 2)) : feature_cols
-    @assert size(dataset, 2) >= 2 "Dataset must contain at least [tau, features...]."
 
     taus = sort(unique(Float64.(dataset[:, 1])))
     pca_results = Dict{Float64, NamedTuple}()
     evr = fill(NaN, length(taus), n_components)
 
     for (i, tau) in pairs(taus)
-        _, Xtau = get_tau_slice(dataset, tau; atol = atol, feature_cols = cols)
+        _, Xtau = get_tau_slice(dataset, tau; atol = atol, feature_cols = feature_cols)
 
         if size(Xtau, 1) > 1
             res = if method === :minmax
