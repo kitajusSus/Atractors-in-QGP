@@ -15,30 +15,45 @@ function generate_trajectories(
         reltol::Real = 1.0e-8,
         solver = Rodas5(),
     )
-    # 1. Bazowy problem różniczkowy dla 1. warunku początkowego
-    Tstate = promote_type(eltype(initial_conditions[1]), typeof(tspan[1]), typeof(tspan[2]), Float64)
-    N = length(initial_conditions[1])
-    u0_first = SVector{N, Tstate}(initial_conditions[1]...)
-    base_prob = ODEProblem(rhs, u0_first, (Tstate(tspan[1]), Tstate(tspan[2])), model)
+    state_element_type = promote_type(
+        eltype(initial_conditions[1]),
+        typeof(tspan[1]),
+        typeof(tspan[2]),
+        Float64
+    )
+    state_dimension = length(initial_conditions[1])
+    first_initial_state = SVector{state_dimension, state_element_type}(initial_conditions[1]...)
 
-    # 2. Definicja problemu zespołowego (kompatybilna ze wszystkimi wersjami SciMLBase)
-    function prob_func(prob, arg2, args...)
-        i = isempty(args) ? (arg2 isa Integer ? arg2 : arg2.sim_id) : arg2
-        return remake(prob, u0 = initial_conditions[i])
+    time_start = state_element_type(tspan[1])
+    time_stop = state_element_type(tspan[2])
+    base_problem = ODEProblem(rhs, first_initial_state, (time_start, time_stop), model)
+
+    function problem_generator_function(problem, second_argument, remaining_arguments...)
+        trajectory_index = if isempty(remaining_arguments)
+            second_argument isa Integer ? second_argument : second_argument.sim_id
+        else
+            second_argument
+        end
+        return remake(problem, u0 = initial_conditions[trajectory_index])
     end
-    ensemble_prob = EnsembleProblem(base_prob; prob_func = prob_func)
 
-    # 3. Dobór algorytmu równoległości
-    ensemble_alg = parallel === :threads ? EnsembleThreads() :
-                   parallel === :split_threads ? EnsembleSplitThreads() : EnsembleSerial()
+    ensemble_problem = EnsembleProblem(base_problem; prob_func = problem_generator_function)
 
-    # 4. Rozwiązanie zespołu trajektorii
-    extra_kwargs = isnothing(saveat) ? (;) : (; saveat)
-    ens_sol = solve(ensemble_prob, solver, ensemble_alg;
-                    trajectories = length(initial_conditions),
-                    abstol = abstol, reltol = reltol, extra_kwargs...)
+    ensemble_algorithm = parallel === :threads ? EnsembleThreads() :
+                         parallel === :split_threads ? EnsembleSplitThreads() : EnsembleSerial()
 
-    return ens_sol.u
+    extra_keyword_arguments = isnothing(saveat) ? (;) : (; saveat)
+    ensemble_solution = solve(
+        ensemble_problem,
+        solver,
+        ensemble_algorithm;
+        trajectories = length(initial_conditions),
+        abstol = abstol,
+        reltol = reltol,
+        extra_keyword_arguments...
+    )
+
+    return ensemble_solution.u
 end
 
 function build_dataset(solutions::AbstractVector; temperature_unit::Symbol = :fm)
