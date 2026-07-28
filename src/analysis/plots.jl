@@ -13,7 +13,7 @@ using LaTeXStrings
 """
 function set_publication_theme(;
         cmap = :devon,         # :davos, :lajolla, :devon, :haline, :phase
-        n_colors = 10,         #
+        n_colors = 25,         #
         bg_color = RGBf(0.98, 0.98, 0.98)
     )
 
@@ -270,7 +270,6 @@ function plot_phase_space_grid(
         times,
         xdef,
         ydef;
-        limits = nothing,
         attractor = nothing,
         attractor_points::Int = 150
     )
@@ -330,6 +329,102 @@ function plot_phase_space_grid(
             strokewidth = 0.1
         )
     end
+    return fig
+end
+function plot_phase_space_grid_3d(
+        dataset::AbstractMatrix{<:Real},
+        times,
+        xdef,
+        ydef,
+        zdef;
+        limits = nothing,
+        attractor = nothing,
+        attractor_points::Int = 150,
+        azimuth::Real = 1.3,
+        elevation::Real = 0.15,
+        n_points_scatter::Int = 5000
+    )
+    set_publication_theme()
+    palette = Makie.theme(:Palette).color[]
+
+    xlbl, xfn = resolve_def(xdef)
+    ylbl, yfn = resolve_def(ydef)
+    zlbl, zfn = resolve_def(zdef)
+
+    n = length(times)
+    ncols = min(3, n)
+    nrows = ceil(Int, n / ncols)
+    fig = Figure(size = (450 * ncols, 400 * nrows))
+
+    for (i, t) in enumerate(times)
+        row = (i - 1) ÷ ncols + 1
+        col = (i - 1) % ncols + 1
+
+        rows = findall(isapprox.(dataset[:, 1], t; atol = 1.0e-8))
+        if isempty(rows)
+            nearest = argmin(abs.(dataset[:, 1] .- t))
+            rows = findall(isapprox.(dataset[:, 1], dataset[nearest, 1]; atol = 1.0e-8))
+        end
+        selected = dataset[rows, :]
+
+        dx = [xfn(selected[j, :], selected) for j in 1:size(selected, 1)]
+        dy = [yfn(selected[j, :], selected) for j in 1:size(selected, 1)]
+        dz = [zfn(selected[j, :], selected) for j in 1:size(selected, 1)]
+
+        ax = Axis3(
+            fig[row, col],
+            title = L"\tau = %$(round(t, digits=2))\,\mathrm{fm}/c",
+            xlabel = xlbl,
+            ylabel = ylbl,
+            zlabel = zlbl,
+            azimuth = azimuth,
+            elevation = elevation
+        )
+
+        if !isnothing(limits)
+            limits!(ax, limits...)
+        end
+
+        if !isnothing(attractor)
+            tau_val = selected[1, 1]
+            Tmin, Tmax = minimum(dataset[:, 2]) * 0.95, maximum(dataset[:, 2]) * 1.05
+            T_grid = temperature_grid(Tmin, Tmax, attractor_points)
+            A_attr = build_attractor_interpolant(attractor)
+
+            attr_x = Vector{Float64}(undef, attractor_points)
+            attr_y = Vector{Float64}(undef, attractor_points)
+            attr_z = Vector{Float64}(undef, attractor_points)
+
+            ncols_ds = size(dataset, 2)
+            state = zeros(Float64, ncols_ds)
+            state[1] = tau_val
+
+            for (k, T) in enumerate(T_grid)
+                state[2] = T
+                state[3] = A_attr(tau_val * T)
+                attr_x[k] = xfn(state, selected)
+                attr_y[k] = yfn(state, selected)
+                attr_z[k] = zfn(state, selected)
+            end
+
+            lines!(
+                ax, attr_x, attr_y, attr_z;
+                color = (RGBAf(176 / 255, 0, 0, 1.0), 0.9),
+                linewidth = 4,
+                label = "Atraktor"
+            )
+        end
+
+        n_pts = min(length(dx), n_points_scatter)
+        scatter!(
+            ax, dx[1:n_pts], dy[1:n_pts], dz[1:n_pts];
+            markersize = 10.0,
+            color = (palette[10], 0.9),
+            strokecolor = (palette[6], 0.01),
+            strokewidth = 0.1
+        )
+    end
+
     return fig
 end
 
@@ -553,56 +648,56 @@ function plot_attractor_Aw_T(
 
     return fig
 end
-
-
-function plot_phase_space_evolution_3d(dataset::AbstractMatrix{<:Real})
-    set_publication_theme()
-    palette = Makie.theme(:Palette).color[]
-    trajs = _split_trajectories(dataset)
-    trajektorie = trajs[1:10:end]
-    fig = Figure(size = (950, 750))
-    ax = Axis3(
-        fig[1, 1],
-        title = L"\text{Ewolucja w przestrzeni fazowej } (T, \mathcal{A}, \tau)",
-        xlabel = L"T\,[\mathrm{fm}^{-1}]",
-        ylabel = L"\mathcal{A}",
-        zlabel = L"\tau\,[\mathrm{fm}]",
-        azimuth = 1.3π,
-        elevation = 0.15π,
-    )
-    for (i, tr) in enumerate(trajektorie)
-        col = palette[mod1(i, length(palette))]
-        lines!(
-            ax,
-            dataset[tr, 2],
-            dataset[tr, 3],
-            dataset[tr, 1],
-            color = (col, 0.7),
-            linewidth = 1.5,
-        )
-    end
-    T_range = range(
-        minimum(dataset[:, 2]),
-        maximum(dataset[:, 2]),
-        length = 2,
-    )
-    τ_range = range(
-        minimum(dataset[:, 1]),
-        maximum(dataset[:, 1]),
-        length = 2,
-    )
-    surface!(
-        ax,
-        T_range,
-        zeros(2, 2),         # A=0
-        repeat(τ_range, 1, 2)',
-        color = fill((:gray, 0.15), 2, 2),
-        transparency = true,
-    )
-    return fig
-end
-
-
+#
+#
+# function plot_phase_space_evolution_3d(dataset::AbstractMatrix{<:Real})
+#     set_publication_theme()
+#     palette = Makie.theme(:Palette).color[]
+#     trajs = _split_trajectories(dataset)
+#     trajektorie = trajs[1:10:end]
+#     fig = Figure(size = (950, 750))
+#     ax = Axis3(
+#         fig[1, 1],
+#         title = L"\text{Ewolucja w przestrzeni fazowej } (T, \mathcal{A}, \tau)",
+#         xlabel = L"T\,[\mathrm{fm}^{-1}]",
+#         ylabel = L"\mathcal{A}",
+#         zlabel = L"\tau\,[\mathrm{fm}]",
+#         azimuth = 1.3π,
+#         elevation = 0.15π,
+#     )
+#     for (i, tr) in enumerate(trajektorie)
+#         col = palette[mod1(i, length(palette))]
+#         lines!(
+#             ax,
+#             dataset[tr, 2],
+#             dataset[tr, 3],
+#             dataset[tr, 1],
+#             color = (col, 0.7),
+#             linewidth = 1.5,
+#         )
+#     end
+#     T_range = range(
+#         minimum(dataset[:, 2]),
+#         maximum(dataset[:, 2]),
+#         length = 2,
+#     )
+#     τ_range = range(
+#         minimum(dataset[:, 1]),
+#         maximum(dataset[:, 1]),
+#         length = 2,
+#     )
+#     surface!(
+#         ax,
+#         T_range,
+#         zeros(2, 2),         # A=0
+#         repeat(τ_range, 1, 2)',
+#         color = fill((:gray, 0.15), 2, 2),
+#         transparency = true,
+#     )
+#     return fig
+# end
+#
+#
 function plot_pca_evr_over_time(
         dataset::AbstractMatrix{<:Real};
         n_components::Int = 2,
@@ -1493,39 +1588,38 @@ end
     return fig
 end
 
+
 function plot_map_lpca(
         dataset::AbstractMatrix{<:Real};
         zakres_K::AbstractVector{<:Integer} = [10, 20, 40, 80],
         n_slices::Int = 15,
-        feature_cols::AbstractVector{<:Integer} = collect(2:size(dataset, 2))
+        feature_cols::AbstractVector{<:Integer} = collect(2:size(dataset, 2)),
     )
-
     set_publication_theme()
     palette = Makie.theme(:Palette).color[]
 
-    results = [compute_lpca(dataset, k, n_slices; feature_cols) for k in zakres_K]
+    results = [compute_lpca(dataset, k, n_slices; feature_cols = feature_cols) for k in zakres_K]
     tau_vals = results[1][1]
     dim_matrix = reduce(hcat, [r[2] for r in results])
 
-    fig = Figure(size = (1400, 700))
-    y_indices = [5:20:length(zakres_K)...]
-    y_labels = string.(zakres_K[y_indices])
-
+    fig = Figure(size = (1200, 600))
     ax = Axis(
         fig[1, 1],
-        # title = L"\text{Mapa lokalnych wymiarów w funkcji } \mathcal{L_D}(\tau, K)",
         xlabel = L"\tau\,[\mathrm{fm}/c]",
         ylabel = L"K",
-        xticks = 0:0.2:maximum(tau_vals),
-        yticks = (y_indices, y_labels),
     )
 
     hm = heatmap!(
-        ax, tau_vals, eachindex(zakres_K), dim_matrix;
-        colormap = palette[8:end],
+        ax, tau_vals, zakres_K, dim_matrix;
+        colormap = palette,
+        colorrange = (1, 3)
     )
 
-    Colorbar(fig[1, 2], hm; label = L"\text{Lokalny wymiar}")
+    Colorbar(
+        fig[1, 2], hm;
+        label = L"\text{Local Dimension} d",
+        ticks = [1, 2, 3]
+    )
 
     return fig
 end

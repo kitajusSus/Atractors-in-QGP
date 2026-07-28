@@ -96,7 +96,7 @@ export attractor_data, build_attractor_interpolant, get_attractor_line, temperat
 export citation
 
 export set_publication_theme, PLOT_KEYS, resolve_def, get_data, get_limits
-export plot_phase_space_grid, plot_thermodynamics_evolution, plot_phase_space_evolution, plot_phase_space_evolution_3d, plot_attractor, plot_attractor_Aw_T
+export plot_phase_space_grid, plot_phase_space_grid_3d, plot_thermodynamics_evolution, plot_phase_space_evolution, plot_phase_space_evolution_3d, plot_attractor, plot_attractor_Aw_T
 export plot_pca_summary, plot_pca_evr_over_time, plot_pca_bar_variance
 export plot_twonn, plot_lid_dimension, plot_map_lpca, plot_local_pca
 export plot_lle_dim, plot_simulation_lle, plot_lle_spectrum_statistics, plot_lle_spectrum_statistics_grid, plot_lle_σ_spectrum, plot_lle_embedding, plot_lle_grid, plot_lle_grid_2d, plot_lle_grid_3d, plot_lle_results_for_taus, plot_lle_spectrum_analysis, plot_lle_spectrum_scan_analysis
