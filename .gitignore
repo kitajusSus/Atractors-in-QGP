@@ -1,3 +1,28 @@
-experiments/*
-datasets/hjsw/*
-datasets/MIS_10fm5000.h5
+# Julia & IDE build/temp files
+*.user
+*.mem
+*.cov
+*.jl.cov
+*.jl.*.cov
+*.jl.mem
+
+# Non-code directories & assets
+Articles/
+seminaria/
+datasets/
+plots/
+results/
+docs/build/
+experiments/
+
+# Data, media & binary files
+*.h5
+*.hd5
+*.csv
+*.pdf
+*.png
+*.jpg
+*.jpeg
+*.svg
+*.mp4
+*.nb
