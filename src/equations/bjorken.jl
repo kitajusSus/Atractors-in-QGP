@@ -62,3 +62,35 @@ function rhs(u::AbstractVector{<:Real}, model::HJSWModel, t::Real)
 
     return SVector(dT, dA, dB)
 end
+
+function rhs(u::AbstractVector{<:Real}, model::HJSWwModel, w::Real)
+    if length(u) == 2
+        A, B = u[1], u[2]
+    else
+        T_val, A, B = u[1], u[2], u[3]
+    end
+
+    Ω_I = model.omega_I
+    Ω_R = model.omega_R
+    C_η = model.params.eta_over_s
+
+    Ω2 = Ω_I^2 + Ω_R^2
+
+    term1 = A * (- (11.0 * B) - w^2 * Ω2)
+    term2 = - (8.0 / 3.0) * (A^2) * (3.0 * w * Ω_I - 1.0)
+    term3 = - (2.0 / 3.0) * (A^3)
+    term4 = B * (12.0 - 36 * w * Ω_I )
+    term5 = 144.0 * C_η * w * Ω2
+    term6 = w*(12+A)
+
+    dA = 18*B/(12*w+A*w)
+    dB = (term1 + term2 + term3 + term4 + term5) /term6
+
+    if length(u) == 2
+        return SVector(dA, dB)
+    else
+        dT = (A - 6.0) * T_val / term6
+        return SVector(dT, dA, dB)
+    end
+end
+

@@ -362,6 +362,34 @@ using GLMakie
         @test size(hjsw_res.dataset, 2) == 4
     end
 
+    @testset "HJSWwModel ewolucja i run_main" begin
+        model_w = HJSWwModel()
+        @test model_w.omega_R ≈ 9.80005
+        @test model_w.omega_I ≈ 2.87631
+
+        # 3D version (with T0)
+        ics_3d = generate_initial_conditions(model_w, 5; T_range=(200.0, 1400.0), A_range=(-1.0, 8.0), B_range=(-1.0, 1.0))
+        @test eltype(ics_3d) == SVector{3, Float64}
+        sols_3d = generate_trajectories(model_w, ics_3d, (0.5, 2.0); saveat=0.1)
+        @test length(sols_3d) == 5
+        ds_3d = build_dataset(sols_3d; has_temperature=true)
+        @test size(ds_3d, 2) == 4 # [w, T, A, B]
+
+        # 2D version (without T0)
+        ics_2d = generate_initial_conditions(model_w, 5; T_range=nothing, A_range=(-1.0, 8.0), B_range=(-1.0, 1.0))
+        @test eltype(ics_2d) == SVector{2, Float64}
+        sols_2d = generate_trajectories(model_w, ics_2d, (0.5, 2.0); saveat=0.1)
+        @test length(sols_2d) == 5
+        ds_2d = build_dataset(sols_2d; has_temperature=false)
+        @test size(ds_2d, 2) == 3 # [w, A, B]
+
+        # test run_main for HJSWwModel
+        res_w = run_main(model_w, n_points = 5, wspan = (0.5, 2.0), saveat = 0.1, seed = 5)
+        @test length(res_w.solutions) == 5
+        @test size(res_w.dataset, 2) == 4
+    end
+
+
     @testset "Stable LPCA and Principal Angles" begin
         # Test normalize_max function
         X_test = [1.0 -4.0 0.5; 2.0 2.0 1.0; -0.5 0.0 0.0]

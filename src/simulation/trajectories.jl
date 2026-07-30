@@ -39,7 +39,7 @@ function generate_trajectories(
     return ensemble_solution.u
 end
 
-function build_dataset(solutions::AbstractVector; temperature_unit::Symbol = :fm)
+function build_dataset(solutions::AbstractVector; temperature_unit::Symbol = :fm, has_temperature::Bool = true)
     state_dim = length(solutions[1].u[1])
     n_cols = 1 + state_dim
     n_rows = sum(length(sol.t) for sol in solutions)
@@ -54,18 +54,24 @@ function build_dataset(solutions::AbstractVector; temperature_unit::Symbol = :fm
             if all_finite
                 data[row_idx, 1] = tau
 
-                T = sol.u[i][1]
-                if temperature_unit === :fm
-                    # standard fm units
-                elseif temperature_unit === :MeV
-                    T = T * MEV_PER_FM
-                else
-                    throw(ArgumentError("Unsupported temperature_unit: $temperature_unit. Expected :fm or :MeV."))
-                end
-                data[row_idx, 2] = T
+                if has_temperature
+                    T = sol.u[i][1]
+                    if temperature_unit === :fm
+                        # standard fm units
+                    elseif temperature_unit === :MeV
+                        T = T * MEV_PER_FM
+                    else
+                        throw(ArgumentError("Unsupported temperature_unit: $temperature_unit. Expected :fm or :MeV."))
+                    end
+                    data[row_idx, 2] = T
 
-                for col in 3:n_cols
-                    data[row_idx, col] = sol.u[i][col - 1]
+                    for col in 3:n_cols
+                        data[row_idx, col] = sol.u[i][col - 1]
+                    end
+                else
+                    for col in 2:n_cols
+                        data[row_idx, col] = sol.u[i][col - 1]
+                    end
                 end
 
                 row_idx += 1
@@ -75,3 +81,4 @@ function build_dataset(solutions::AbstractVector; temperature_unit::Symbol = :fm
 
     return data[1:(row_idx - 1), :]
 end
+

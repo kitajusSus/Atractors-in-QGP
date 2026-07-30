@@ -69,3 +69,41 @@ function generate_initial_conditions(
     end
     return ics
 end
+
+"""
+    generate_initial_conditions(model::HJSWwModel, n::Integer; kwargs...)
+
+Wersja dla HJSWwModel generująca warunki początkowe [T0, A0, B0] (3D) lub [A0, B0] (2D gdy T_range = nothing).
+"""
+function generate_initial_conditions(
+        model::HJSWwModel,
+        n::Integer = 5000;
+        T_range::Union{Tuple{<:Real, <:Real}, Nothing} = (200.0, 1400.0),
+        A_range::Tuple{<:Real, <:Real} = (-1.0, 10.0),
+        B_range::Tuple{<:Real, <:Real} = (-2.0, 2.0),
+        temperature_unit::Symbol = :MeV,
+        seed::Integer = 5,
+    )
+    rng_local = Xoshiro(seed)
+
+    if T_range === nothing
+        ics = Vector{SVector{2, Float64}}(undef, n)
+        for i in eachindex(ics)
+            A0 = rand(rng_local) * (A_range[2] - A_range[1]) + A_range[1]
+            B0 = rand(rng_local) * (B_range[2] - B_range[1]) + B_range[1]
+            ics[i] = SVector{2, Float64}(A0, B0)
+        end
+        return ics
+    else
+        ics = Vector{SVector{3, Float64}}(undef, n)
+        for i in eachindex(ics)
+            T0 = rand(rng_local) * (T_range[2] - T_range[1]) + T_range[1]
+            T0_fm = temperature_to_fm(T0, temperature_unit)
+            A0 = rand(rng_local) * (A_range[2] - A_range[1]) + A_range[1]
+            B0 = rand(rng_local) * (B_range[2] - B_range[1]) + B_range[1]
+            ics[i] = SVector{3, Float64}(T0_fm, A0, B0)
+        end
+        return ics
+    end
+end
+

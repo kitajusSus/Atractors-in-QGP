@@ -71,7 +71,7 @@ include("io/data_io.jl")
 include("io/attractor.jl")
 include("io/citation.jl")
 
-export HydroParams, AbstractHydroModel, BRSSSModel, MISModel, HJSWModel
+export HydroParams, AbstractHydroModel, BRSSSModel, MISModel, HJSWModel, HJSWwModel
 export HBARC_MEV_FM, MEV_PER_FM, FM_PER_MEV, to_temperature_unit, temperature_to_fm
 export solve_hydro, generate_initial_conditions, generate_trajectories, build_dataset, run_main
 
@@ -152,4 +152,35 @@ function run_main(
     return (solutions = solutions, dataset = dataset)
 end
 
+function run_main(
+        model::HJSWwModel;
+        n_points::Integer = 5000,
+        wspan::Tuple{<:Real, <:Real} = (0.1, 10.0),
+        T_range::Union{Tuple{<:Real, <:Real}, Nothing} = (200.0, 1400.0),
+        A_range::Tuple{<:Real, <:Real} = (-1.0, 10.0),
+        B_range::Tuple{<:Real, <:Real} = (-2.0, 2.0),
+        temperature_unit::Symbol = :MeV,
+        saveat::Union{Real, AbstractVector{<:Real}, Nothing} = 0.05,
+        seed::Integer = 5,
+        output_file::Union{String, Nothing} = nothing,
+    )
+
+    ics = generate_initial_conditions(
+        model,
+        n_points;
+        T_range = T_range,
+        A_range = A_range,
+        B_range = B_range,
+        temperature_unit = temperature_unit,
+        seed = seed,
+    )
+    solutions = generate_trajectories(model, ics, wspan; saveat = saveat)
+    dataset = build_dataset(solutions; temperature_unit = temperature_unit, has_temperature = (T_range !== nothing))
+    if output_file !== nothing
+        save_dataset(output_file, dataset)
+    end
+    return (solutions = solutions, dataset = dataset)
 end
+
+end
+

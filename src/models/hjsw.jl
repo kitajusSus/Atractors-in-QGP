@@ -34,3 +34,37 @@ function Base.getproperty(model::HJSWModel, sym::Symbol)
         return getfield(model, sym)
     end
 end
+
+"""
+Konfiguracja modelu HJSW w zmiennych skali w = τ T (Heller-Janik-Spaliński-Witaszczyk).
+Ewolucja w skali w: A(w) oraz B(w).
+"""
+struct HJSWwModel{T <: Real} <: AbstractHydroModel
+    params::HydroParams{T}
+    omega_R::T
+    omega_I::T
+end
+
+"""
+    HJSWwModel(; eta_over_s, omega_R, omega_I)
+"""
+function HJSWwModel(;
+        eta_over_s::Real = 0.0795775,
+        omega_R::Real = 9.80005,
+        omega_I::Real = 2.87631,
+    )
+    tau_pi = 1 / (2 * π)
+    lambda1 = 0.0
+    T = promote_type(typeof(eta_over_s), typeof(tau_pi), typeof(lambda1), typeof(omega_R), typeof(omega_I))
+    params = HydroParams(T(eta_over_s), T(tau_pi), T(lambda1))
+    return HJSWwModel(params, T(omega_R), T(omega_I))
+end
+
+function Base.getproperty(model::HJSWwModel, sym::Symbol)
+    if sym === :C_eta
+        return getfield(model, :params).eta_over_s
+    else
+        return getfield(model, sym)
+    end
+end
+
