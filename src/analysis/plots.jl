@@ -129,7 +129,9 @@ const PLOT_KEYS = Dict(
     # pod konkretne publikacje tutaj 2020 Hydrodynamics in Phase Space 0.22 to mój czas
     # inizjalitacji τ₀
     :tauT_2020 => (L"\tau_0 T", (x, _) -> 0.2 * x[2]),
-    :tau2Tdot_2020 => (L"\tau_0^2 \dot{T}", (x, _) -> 0.2^2 * ((x[2] / x[1]) * (-1 / 3 + x[3] / 18)))
+    :tau2Tdot_2020 => (L"\tau_0^2 \dot{T}", (x, _) -> 0.2^2 * ((x[2] / x[1]) * (-1 / 3 + x[3] / 18))),
+
+    :w => (L"w = t T(t)", (x, _) -> x[2]),
 )
 
 function resolve_def(def)
