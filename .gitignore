@@ -6,23 +6,10 @@
 *.jl.*.cov
 *.jl.mem
 
-# Non-code directories & assets
 Articles/
 seminaria/
-datasets/
-plots/
 results/
 docs/build/
 experiments/
 
-# Data, media & binary files
-*.h5
-*.hd5
-*.csv
-*.pdf
-*.png
-*.jpg
-*.jpeg
-*.svg
-*.mp4
-*.nb
+Articles/*

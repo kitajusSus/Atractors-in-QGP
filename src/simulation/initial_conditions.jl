@@ -78,7 +78,7 @@ Wersja dla HJSWwModel generująca warunki początkowe [T0, A0, B0] (3D) lub [A0,
 function generate_initial_conditions(
         model::HJSWwModel,
         n::Integer = 5000;
-        T_range::Union{Tuple{<:Real, <:Real}, Nothing} = (200.0, 1400.0),
+        T_range::Union{Tuple{<:Real, <:Real}, Nothing} = nothing,
         A_range::Tuple{<:Real, <:Real} = (-1.0, 10.0),
         B_range::Tuple{<:Real, <:Real} = (-2.0, 2.0),
         temperature_unit::Symbol = :MeV,

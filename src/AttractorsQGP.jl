@@ -130,6 +130,7 @@ function run_main(
         A_range::Tuple{<:Real, <:Real} = (-1.0, 10.0),
         B_range::Tuple{<:Real, <:Real} = (-2.0, 2.0),
         temperature_unit::Symbol = :MeV,
+        include_w::Bool = false,
         saveat::Union{Real, AbstractVector{<:Real}, Nothing} = 0.01,
         seed::Integer = 5,
         output_file::Union{String, Nothing} = nothing,
@@ -145,7 +146,7 @@ function run_main(
         seed = seed,
     )
     solutions = generate_trajectories(model, ics, tspan; saveat = saveat)
-    dataset = build_dataset(solutions)
+    dataset = build_dataset(solutions; temperature_unit = temperature_unit, include_w = include_w)
     if output_file !== nothing
         save_dataset(output_file, dataset)
     end
@@ -160,6 +161,8 @@ function run_main(
         A_range::Tuple{<:Real, <:Real} = (-1.0, 10.0),
         B_range::Tuple{<:Real, <:Real} = (-2.0, 2.0),
         temperature_unit::Symbol = :MeV,
+        include_tau::Bool = true,
+        include_temperature::Bool = true,
         saveat::Union{Real, AbstractVector{<:Real}, Nothing} = 0.05,
         seed::Integer = 5,
         output_file::Union{String, Nothing} = nothing,
@@ -175,7 +178,14 @@ function run_main(
         seed = seed,
     )
     solutions = generate_trajectories(model, ics, wspan; saveat = saveat)
-    dataset = build_dataset(solutions; temperature_unit = temperature_unit, has_temperature = (T_range !== nothing))
+    has_temp = (T_range !== nothing)
+    dataset = build_dataset(
+        solutions;
+        temperature_unit = temperature_unit,
+        has_temperature = has_temp,
+        include_tau = (has_temp && include_tau),
+        include_temperature = include_temperature,
+    )
     if output_file !== nothing
         save_dataset(output_file, dataset)
     end
@@ -183,4 +193,3 @@ function run_main(
 end
 
 end
-
