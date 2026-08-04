@@ -15,6 +15,7 @@ makedocs(
         "Examples of usage" => "examples.md",
         "Tutorials" => "tutorials.md",
         "NCBJ" => "ncbj.md",
+        "HJSW Article Tutorials" => "hjsw.md",
         "Matlab" => "matlab.md",
     ],
     warnonly = [:missing_docs, :cross_references]
