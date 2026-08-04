@@ -13,3 +13,8 @@ docs/build/
 experiments/
 
 Articles/*
+
+# Package manifests (should not be tracked for Julia packages)
+Manifest.toml
+docs/Manifest.toml
+
