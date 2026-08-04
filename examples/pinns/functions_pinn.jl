@@ -1,22 +1,24 @@
-using Flux
+using Lux
 using Zygote
 using ForwardDiff
 using LinearAlgebra
 using Statistics
 using StaticArrays
 using Printf
+using Random
+using Optimisers
 using AttractorsQGP
 
 """
     utworz_model_pinn(wymiar_ukryty::Int = 64)
-Ukryty wymiar to tzw. bottleneck lub szerokość warstw pośrednich.
+Tworzy bezstanowy model Lux PINN.
 """
 function utworz_model_pinn(wymiar_ukryty::Int = 64)
-    return Chain(
-        Dense(3 => wymiar_ukryty, tanh),
-        Dense(wymiar_ukryty => wymiar_ukryty, tanh),
-        Dense(wymiar_ukryty => 2)
-    ) |> f64
+    return Lux.Chain(
+        Lux.Dense(3 => wymiar_ukryty, tanh),
+        Lux.Dense(wymiar_ukryty => wymiar_ukryty, tanh),
+        Lux.Dense(wymiar_ukryty => 2)
+    )
 end
 
 function przygotuj_dane_treningowe(dane::AbstractMatrix{<:Real})
@@ -46,29 +48,29 @@ function przygotuj_dane_treningowe(dane::AbstractMatrix{<:Real})
     return X_train, Y_train
 end
 
-function calc_physics_residual(model, τ::Real, T₀::Real, ℛ₀::Real, hydro_model; eps = 1.0e-4)
-    u_plus = model([τ + eps, T₀, ℛ₀])
-    u_minus = model([τ - eps, T₀, ℛ₀])
+function calc_physics_residual(model, ps, st, τ::Real, T₀::Real, ℛ₀::Real, hydro_model; eps = 1.0e-4)
+    u_plus, _ = model([τ + eps, T₀, ℛ₀], ps, st)
+    u_minus, _ = model([τ - eps, T₀, ℛ₀], ps, st)
     dudτ_net = (u_plus .- u_minus) ./ (2 * eps)
 
-    u_pred = model([τ, T₀, ℛ₀])
+    u_pred, _ = model([τ, T₀, ℛ₀], ps, st)
     rhs_out = AttractorsQGP.rhs(u_pred, hydro_model, τ)
     dudτ_physics = [rhs_out[1], rhs_out[2]]
 
     return sum((dudτ_net .- dudτ_physics) .^ 2)
 end
 
-function total_loss_verbose(model, X_data, Y_data, hydro_model; λ_phys = 0.5, n_colloc = 100)
+function total_loss_verbose(model, ps, st, X_data, Y_data, hydro_model; λ_phys = 0.5, n_colloc = 100)
     N = size(X_data, 2)
 
-    Y_pred = model(X_data)
+    Y_pred, _ = model(X_data, ps, st)
     loss_data = mean((Y_pred .- Y_data) .^ 2)
 
     loss_phys = 0.0
     rzeczywiste_colloc = min(n_colloc, N)
     for i in rand(1:N, rzeczywiste_colloc)
         τ, T₀, ℛ₀ = X_data[1, i], X_data[2, i], X_data[3, i]
-        loss_phys += calc_physics_residual(model, τ, T₀, ℛ₀, hydro_model)
+        loss_phys += calc_physics_residual(model, ps, st, τ, T₀, ℛ₀, hydro_model)
     end
     loss_phys /= rzeczywiste_colloc
 
@@ -76,29 +78,30 @@ function total_loss_verbose(model, X_data, Y_data, hydro_model; λ_phys = 0.5, n
     return loss_total, loss_data, loss_phys
 end
 
-function trenuj_pinn_rygorystycznie!(model, X_train, Y_train, hydro_model; epochs = 500, lr = 0.001, λ_phys = 0.5)
-    opt = Flux.setup(Flux.Adam(lr), model)
+function trenuj_pinn_rygorystycznie!(model, ps, st, X_train, Y_train, hydro_model; epochs = 500, lr = 0.001, λ_phys = 0.5)
+    opt = Optimisers.Adam(lr)
+    opt_state = Optimisers.setup(opt, ps)
 
-    println("g PINN (Epoki: $epochs, λ_phys: $λ_phys)...")
+    println("🚀 PINN Trening Lux (Epoki: $epochs, λ_phys: $λ_phys)...")
     println("Epoka | Total Loss | Loss Data | Loss Physics")
     println("-------------------------------------------------")
 
     for epoch in 1:epochs
-        loss_total, grads = Flux.withgradient(model) do m
-            total_loss_verbose(m, X_train, Y_train, hydro_model; λ_phys = λ_phys, n_colloc = 200)[1]
+        loss_total, grads = Zygote.withgradient(ps) do p
+            total_loss_verbose(model, p, st, X_train, Y_train, hydro_model; λ_phys = λ_phys, n_colloc = 200)[1]
         end
-        Flux.update!(opt, model, grads[1])
+        opt_state, ps = Optimisers.update(opt_state, ps, grads[1])
 
         if epoch % 50 == 0 || epoch == 1
-            _, l_d, l_p = total_loss_verbose(model, X_train, Y_train, hydro_model; λ_phys = λ_phys, n_colloc = 200)
+            _, l_d, l_p = total_loss_verbose(model, ps, st, X_train, Y_train, hydro_model; λ_phys = λ_phys, n_colloc = 200)
             @printf("%4d  | %10.6f | %9.6f | %12.6f\n", epoch, loss_total, l_d, l_p)
         end
     end
     println("✅ Trening zakończony!")
-    return model
+    return ps, st
 end
 
-function badaj_wymiar_globalnie(model, τ_test::Real, X_data_start; n_probek = 50)
+function badaj_wymiar_globalnie(model, ps, st, τ_test::Real, X_data_start; n_probek = 50)
     d_eff_list = Float64[]
     N_total = size(X_data_start, 2)
 
@@ -110,7 +113,7 @@ function badaj_wymiar_globalnie(model, τ_test::Real, X_data_start; n_probek = 5
         ℛ₀_test = X_data_start[3, i]
 
         J = ForwardDiff.jacobian(
-            x0 -> model([τ_test, x0[1], x0[2]]),
+            x0 -> first(model([τ_test, x0[1], x0[2]], ps, st)),
             [T₀_test, ℛ₀_test]
         )
 
