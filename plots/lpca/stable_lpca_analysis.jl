@@ -1,4 +1,4 @@
-using AtractorsQGP
+using AttractorsQGP
 using GLMakie
 using LaTeXStrings
 using Statistics

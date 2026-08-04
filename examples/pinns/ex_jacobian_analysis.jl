@@ -14,7 +14,7 @@ For multidimensional data:
 - `pinn_jacobian_scan` returns raw J matrices for all (τ, IC) pairs
 """
 
-using AtractorsQGP
+using AttractorsQGP
 using GLMakie
 using Printf
 using Statistics

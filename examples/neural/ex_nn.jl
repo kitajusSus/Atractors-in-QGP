@@ -1,4 +1,4 @@
-using AtractorsQGP
+using AttractorsQGP
 using Lux
 using Optimisers
 using Zygote

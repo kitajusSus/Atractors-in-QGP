@@ -1,7 +1,7 @@
 using BenchmarkTools
 
-# include(".../src/AtractorsQGP.jl")
-using .AtractorsQGP
+# include("../src/AttractorsQGP.jl")
+using .AttractorsQGP
 
 println("Running baseline benchmark...")
 println("model")

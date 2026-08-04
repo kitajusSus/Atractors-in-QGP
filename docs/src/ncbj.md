@@ -9,7 +9,7 @@ dwunastozgłoskowcem
 - krok 1
 uruchamianie środowiska
 ```julia
-using AtractorsQGP
+using AttractorsQGP
 includet("examples/ncbj_lle.jl")
 ```
 

@@ -1,7 +1,7 @@
 using LinearAlgebra
 using GLMakie
 using Random
-using AtractorsQGP
+using AttractorsQGP
 
 
 function compute_lle(X::Matrix{Float64}, k::Int, d::Int)

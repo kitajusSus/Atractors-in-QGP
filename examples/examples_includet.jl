@@ -1,7 +1,7 @@
 using LinearAlgebra
 using Statistics
 using GLMakie
-using AtractorsQGP
+using AttractorsQGP
 
 GLMakie.activate!()
 

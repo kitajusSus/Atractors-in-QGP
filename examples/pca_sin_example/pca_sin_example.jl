@@ -2,7 +2,7 @@ using GLMakie
 using Random
 using LinearAlgebra
 using Statistics
-using AtractorsQGP
+using AttractorsQGP
 
 function generate_noisy_sine(N; x_min = 0.0, x_max = 2 * pi, noise_std = 0.3, seed = 5)
     Random.seed!(seed)

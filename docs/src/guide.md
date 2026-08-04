@@ -1,7 +1,7 @@
 
-# AtractorsQGP.jl User Guide
+# AttractorsQGP.jl User Guide
 
-This guide provides a comprehensive walkthrough of the core functionalities offered by AtractorsQGP.jl. It covers theoretical background, fundamental data structures, simulation workflows, and advanced analysis tools.
+This guide provides a comprehensive walkthrough of the core functionalities offered by AttractorsQGP.jl. It covers theoretical background, fundamental data structures, simulation workflows, and advanced analysis tools.
 
 ## 1. Theoretical Background and Models
 
@@ -32,7 +32,7 @@ end
 You can initialize specific models that automatically configure these parameters:
 
 ```julia
-using AtractorsQGP
+using AttractorsQGP
 
 # BRSSS Model (includes all terms)
 model_brsss = BRSSSModel(eta_over_s = 0.08, tau_pi = 0.1, lambda1 = 0.05)

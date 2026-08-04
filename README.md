@@ -15,7 +15,7 @@ julia --project=.
 
 
 ```julia
-using AtractorsQGP
+using AttractorsQGP
 dane = load_dataset("datasets/data_testSmall.jls")
 plot_lle_dim(dane, 3,2,0.35)
 plot_lle_dim(dane, 3,2,0.40)

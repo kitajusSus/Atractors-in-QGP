@@ -1,6 +1,6 @@
 using DifferentialEquations
 using GLMakie
-using AtractorsQGP: set_publication_theme as theme_QGP
+using AttractorsQGP: set_publication_theme as theme_QGP
 using LaTeXStrings
 
 function ukos_oscylator(u, p, t)

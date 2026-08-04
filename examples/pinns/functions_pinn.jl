@@ -5,7 +5,7 @@ using LinearAlgebra
 using Statistics
 using StaticArrays
 using Printf
-using AtractorsQGP
+using AttractorsQGP
 
 """
     utworz_model_pinn(wymiar_ukryty::Int = 64)
@@ -52,7 +52,7 @@ function calc_physics_residual(model, τ::Real, T₀::Real, ℛ₀::Real, hydro_
     dudτ_net = (u_plus .- u_minus) ./ (2 * eps)
 
     u_pred = model([τ, T₀, ℛ₀])
-    rhs_out = AtractorsQGP.rhs(u_pred, hydro_model, τ)
+    rhs_out = AttractorsQGP.rhs(u_pred, hydro_model, τ)
     dudτ_physics = [rhs_out[1], rhs_out[2]]
 
     return sum((dudτ_net .- dudτ_physics) .^ 2)

@@ -1,5 +1,5 @@
 using Profile
-using AtractorsQGP
+using AttractorsQGP
 
 model = BRSSSModel()
 ICs = generate_initial_conditions(256)

@@ -2,7 +2,7 @@ using GLMakie
 using LaTeXStrings
 using Statistics
 using LinearAlgebra
-using AtractorsQGP
+using AttractorsQGP
 
 function normalizuj_max(X_features::AbstractMatrix{<:Real})
     max_per_column = maximum(abs, X_features, dims = 1)

@@ -4,7 +4,7 @@ Sometimes I can find techniques that see usefull for my work, I will save them  
 
 ## Dynamical Systems Analysis
 
-Beyond PCA, AtractorsQGP.jl provides tools to analyze the system from the perspective of chaos theory and dynamical systems.
+Beyond PCA, AttractorsQGP.jl provides tools to analyze the system from the perspective of chaos theory and dynamical systems.
 
 ### Potencial Way for upgrades
 While I am doing my research sometimes I find out about interesting algorithms:

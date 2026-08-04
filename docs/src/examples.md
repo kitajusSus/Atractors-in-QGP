@@ -13,7 +13,7 @@ repl code.
 
 
 ```julia
-using AtractorsQGP
+using AttractorsQGP
 dane = load_dataset("datasets/data_testSmall.jls")
 plot_lle_dim(dane, 3,2,0.35)
 plot_lle_dim(dane, 3,2,0.40)
@@ -45,7 +45,7 @@ end
 
 
 julia> testy = run_main(MISModel(), n_points=100, )
-run_main(model::AbstractHydroModel; n_points, tspan, T_range, A_range, saveat, seed) @ AtractorsQGP ~/github/Atractors-in-QGP/src/AtractorsQGP.jl:59
+run_main(model::AbstractHydroModel; n_points, tspan, T_range, A_range, saveat, seed) @ AttractorsQGP ~/github/Atractors-in-QGP/src/AttractorsQGP.jl:59
 julia> testy = run_main(MISModel(), n_points=100, tspan=(0.25, 0.26), seed  = 5)
 julia> save_dataset("datasets/testy_100.h5", tests.dataset)
 julia> save_dataset("datasets/testy_100.h5", testy.dataset)

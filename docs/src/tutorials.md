@@ -144,7 +144,7 @@ $$A(w)$$
 mis = load_dataset(....)
 
 
-using AtractorsQGP
+using AttractorsQGP
 using GLMakie  
 w_max = 2.5 
 attr = attractor_data(MISModel(), tau_max = w_max, krok = 0.005)
