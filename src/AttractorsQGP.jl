@@ -156,14 +156,13 @@ end
 function run_main(
         model::HJSWwModel;
         n_points::Integer = 5000,
-        wspan::Tuple{<:Real, <:Real} = (0.1, 10.0),
-        T_range::Union{Tuple{<:Real, <:Real}, Nothing} = (200.0, 1400.0),
+        tspan::Tuple{<:Real, <:Real} = (0.2, 1.2),
+        w_range::Union{Tuple{<:Real, <:Real}, Nothing} = (0.1, 5.0),
+        T_range::Union{Tuple{<:Real, <:Real}, Nothing} = nothing,
         A_range::Tuple{<:Real, <:Real} = (-1.0, 10.0),
         B_range::Tuple{<:Real, <:Real} = (-2.0, 2.0),
         temperature_unit::Symbol = :MeV,
-        include_tau::Bool = true,
-        include_temperature::Bool = true,
-        saveat::Union{Real, AbstractVector{<:Real}, Nothing} = 0.05,
+        saveat::Union{Real, AbstractVector{<:Real}, Nothing} = 0.01,
         seed::Integer = 5,
         output_file::Union{String, Nothing} = nothing,
     )
@@ -171,21 +170,16 @@ function run_main(
     ics = generate_initial_conditions(
         model,
         n_points;
+        w_range = w_range,
         T_range = T_range,
+        t0 = tspan[1],
         A_range = A_range,
         B_range = B_range,
         temperature_unit = temperature_unit,
         seed = seed,
     )
-    solutions = generate_trajectories(model, ics, wspan; saveat = saveat)
-    has_temp = (T_range !== nothing)
-    dataset = build_dataset(
-        solutions;
-        temperature_unit = temperature_unit,
-        has_temperature = has_temp,
-        include_tau = (has_temp && include_tau),
-        include_temperature = include_temperature,
-    )
+    solutions = generate_trajectories(model, ics, tspan; saveat = saveat)
+    dataset = build_dataset(solutions; has_temperature = false)
     if output_file !== nothing
         save_dataset(output_file, dataset)
     end
@@ -193,3 +187,5 @@ function run_main(
 end
 
 end
+
+

@@ -367,33 +367,20 @@ using GLMakie
         @test model_w.omega_R ≈ 9.80005
         @test model_w.omega_I ≈ 2.87631
 
-        # 3D version (with T0)
-        ics_3d = generate_initial_conditions(model_w, 5; T_range=(200.0, 1400.0), A_range=(-1.0, 8.0), B_range=(-1.0, 1.0))
-        @test eltype(ics_3d) == SVector{3, Float64}
-        sols_3d = generate_trajectories(model_w, ics_3d, (0.5, 2.0); saveat=0.1)
-        @test length(sols_3d) == 5
-        # 3D version with include_tau (5D output: [tau, T, w, A, B])
-        ds_3d_tau = build_dataset(sols_3d; has_temperature=true, include_tau=true)
-        @test size(ds_3d_tau, 2) == 5 # [tau, T, w, A, B]
-        @test ds_3d_tau[1, 1] ≈ ds_3d_tau[1, 3] / ds_3d_tau[1, 2] # tau = w / T_fm
+        ics = generate_initial_conditions(model_w, 5; w_range=(0.2, 2.0), A_range=(-1.0, 8.0), B_range=(-1.0, 1.0))
+        @test eltype(ics) == SVector{3, Float64}
+        sols = generate_trajectories(model_w, ics, (0.1, 1.0); saveat=0.05)
+        @test length(sols) == 5
 
-        # 2D version (without T0)
-        ics_2d = generate_initial_conditions(model_w, 5; T_range=nothing, A_range=(-1.0, 8.0), B_range=(-1.0, 1.0))
-        @test eltype(ics_2d) == SVector{2, Float64}
-        sols_2d = generate_trajectories(model_w, ics_2d, (0.5, 2.0); saveat=0.1)
-        @test length(sols_2d) == 5
-        ds_2d = build_dataset(sols_2d; has_temperature=false)
-        @test size(ds_2d, 2) == 3 # [w, A, B]
+        ds = build_dataset(sols; has_temperature=false)
+        @test size(ds, 2) == 4 # [t, w, A, B]
 
-        # test run_main for HJSWwModel default (5D with tau, T, w, A, B)
-        res_w = run_main(model_w, n_points = 5, wspan = (0.5, 2.0), saveat = 0.1, seed = 5)
-        @test length(res_w.solutions) == 5
-        @test size(res_w.dataset, 2) == 5 # [tau, T, w, A, B]
-
-        # test run_main for HJSWwModel 2D mode (without T_range -> 3D output [w, A, B])
-        res_w_2d = run_main(model_w, n_points = 5, wspan = (0.5, 2.0), T_range = nothing, saveat = 0.1, seed = 5)
-        @test size(res_w_2d.dataset, 2) == 3
+        res = run_main(model_w, n_points = 5, tspan = (0.1, 1.0), saveat = 0.05, seed = 5)
+        @test length(res.solutions) == 5
+        @test size(res.dataset, 2) == 4 # [t, w, A, B]
     end
+
+
 
 
     @testset "Stable LPCA and Principal Angles" begin

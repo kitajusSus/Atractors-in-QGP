@@ -63,12 +63,8 @@ function rhs(u::AbstractVector{<:Real}, model::HJSWModel, t::Real)
     return SVector(dT, dA, dB)
 end
 
-function rhs(u::AbstractVector{<:Real}, model::HJSWwModel, w::Real)
-    if length(u) == 2
-        A, B = u[1], u[2]
-    else
-        T_val, A, B = u[1], u[2], u[3]
-    end
+function rhs(u::AbstractVector{<:Real}, model::HJSWwModel, t::Real)
+    w, A, B = u[1], u[2], u[3]
 
     Ω_I = model.omega_I
     Ω_R = model.omega_R
@@ -76,21 +72,19 @@ function rhs(u::AbstractVector{<:Real}, model::HJSWwModel, w::Real)
 
     Ω2 = Ω_I^2 + Ω_R^2
 
-    term1 = A * (- (11.0 * B) - w^2 * Ω2)
-    term2 = - (8.0 / 3.0) * (A^2) * (3.0 * w * Ω_I - 1.0)
-    term3 = - (2.0 / 3.0) * (A^3)
-    term4 = B * (12.0 - 36 * w * Ω_I )
-    term5 = 144.0 * C_η * w * Ω2
-    term6 = w*(12+A)
+    dw = w * (12.0 + A) / (18.0 * t)
+    dA = B / t
 
-    dA = 18*B/(12*w+A*w)
-    dB = (term1 + term2 + term3 + term4 + term5) /term6
+    term1 = A * (- (11.0 / 18.0) * B - (w^2) * Ω2)
+    term2 = - (4.0 / 27.0) * (A^2) * (3.0 * Ω_I * w - 1.0)
+    term3 = - (1.0 / 27.0) * (A^3)
+    term4 = B * ((2.0 / 3.0) - 2.0 * Ω_I * w)
+    term5 = 8.0 * C_η * w * Ω2
 
-    if length(u) == 2
-        return SVector(dA, dB)
-    else
-        dT = (A - 6.0) * T_val / term6
-        return SVector(dT, dA, dB)
-    end
+    dB = (term1 + term2 + term3 + term4 + term5) / t
+
+    return SVector(dw, dA, dB)
 end
+
+
 
