@@ -51,7 +51,41 @@ end
 
 function normalize_max(X)
     max_per_column = maximum(abs, X, dims = 1)
+    max_per_column[max_per_column .== 0.0] .= 1.0
     return X ./ max_per_column
+end
+
+"""
+    apply_normalization(X::AbstractMatrix{<:Real}, method::Union{Symbol, Function} = :max)
+
+Applies data normalization / regularization to matrix `X`.
+
+Supported methods:
+- `:max`: Divides each column by max absolute value (rescales to [-1, 1]).
+- `:minmax`: Min-Max column normalization (rescales to [0, 1]).
+- `:zscore` / `:standard`: Zero mean, unit variance.
+- `:none` / `:raw`: Unscaled raw matrix.
+- Custom `Function`: User-supplied scaling function `f(X) -> X_scaled`.
+"""
+function apply_normalization(X::AbstractMatrix{<:Real}, method::Union{Symbol, Function} = :standard)
+    if method isa Function
+        return method(X)
+    elseif method === :max
+        return normalize_max(X)
+    elseif method === :minmax
+        Xn, _, _ = normalize_minmax(X)
+        return Xn
+    elseif method === :zscore || method === :standard
+        Xf = Matrix{Float64}(X)
+        μ = mean(Xf, dims = 1)
+        σ = std(Xf, dims = 1)
+        σ[σ .== 0.0] .= 1.0
+        return (Xf .- μ) ./ σ
+    elseif method === :none || method === :raw
+        return Matrix{Float64}(X)
+    else
+        throw(ArgumentError("Unknown normalization method: $method. Supported: :max, :minmax, :zscore, :none, or a Function."))
+    end
 end
 
 function swiss_roll(n; noise = 0.0)
@@ -71,7 +105,8 @@ end
         dataset,
         k::Int,
         n_slices::Int;
-        feature_cols::AbstractVector{<:Integer} = collect(2:size(dataset, 2))
+        feature_cols::AbstractVector{<:Integer} = collect(2:size(dataset, 2)),
+        normalize::Union{Symbol, Function} = :standard
     )
     taus = sort(unique(dataset[:, 1]))
     idxs = round.(Int, range(1, length(taus), length = n_slices))
@@ -86,7 +121,7 @@ end
 
     for (idx, τ) in enumerate(selected_taus)
         _, X_tau = get_tau_slice(dataset, τ; feature_cols = feature_cols)
-        X_norm = normalize_max(X_tau)
+        X_norm = apply_normalization(X_tau, normalize)
 
         local_dims = dims(X_norm; k = k, tol = tol)
 

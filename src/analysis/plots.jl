@@ -1542,19 +1542,19 @@ end
         dataset_loaded::AbstractMatrix{<:Real};
         n_slices::Int = 15,
         tablica_k::Vector{Int} = [10, 20, 40, 80, 160],
-        feature_cols::AbstractVector{<:Integer} = 2:size(dataset_loaded, 2)
+        feature_cols::AbstractVector{<:Integer} = 2:size(dataset_loaded, 2),
+        normalize::Union{Symbol, Function} = :max,
+        title::Union{String, Nothing} = nothing
     )
     set_publication_theme()
 
     fig = Figure(size = (950, 600))
+    ax_title = title !== nothing ? title : ""
     ax = Axis(
         fig[1, 1],
-        # title = L"\text{Wpływ parametru } K \text{ na działanie Algorytmu L-PCA jako } f(\tau)",
+        title = ax_title,
         xlabel = L"\tau\,[\mathrm{fm}/c]",
         ylabel = L"\text{Średni wymiar lokalny}",
-        # xticks = 0:0.25:maximum(dataset_loaded[:, 1]),
-        # yticks = 1:0.1:2,
-
         xautolimitmargin = (0.0, 0.05),
         yautolimitmargin = (0.05, 0.05)
     )
@@ -1563,9 +1563,9 @@ end
     for (i, k_bazowe) in enumerate(tablica_k)
 
         k_drugie = k_bazowe .* 2
-        tau_vals, mean_k1, std_k1 = compute_lpca(dataset_loaded, k_bazowe, n_slices, feature_cols = feature_cols)
+        tau_vals, mean_k1, std_k1 = compute_lpca(dataset_loaded, k_bazowe, n_slices; feature_cols = feature_cols, normalize = normalize)
 
-        tau_drugie, mean_k2, std_k2 = compute_lpca(dataset_loaded, k_drugie, n_slices, feature_cols = feature_cols)
+        tau_drugie, mean_k2, std_k2 = compute_lpca(dataset_loaded, k_drugie, n_slices; feature_cols = feature_cols, normalize = normalize)
         c = palette[mod1(i, length(palette))]
         band!(
             ax,
@@ -1586,6 +1586,71 @@ end
     end
 
     axislegend(ax, position = :rt)
+
+    return fig
+end
+
+"""
+    plot_local_pca_regularizations(
+        dataset_loaded::AbstractMatrix{<:Real};
+        n_slices::Int = 15,
+        tablica_k::Vector{Int} = [10, 20, 40, 80],
+        feature_cols::AbstractVector{<:Integer} = 2:size(dataset_loaded, 2),
+        methods::Vector{Symbol} = [:max, :minmax, :zscore, :none]
+    )
+"""
+@views function plot_local_pca_regularizations(
+        dataset_loaded::AbstractMatrix{<:Real};
+        n_slices::Int = 15,
+        tablica_k::Vector{Int} = [10, 20, 40, 80],
+        feature_cols::AbstractVector{<:Integer} = 2:size(dataset_loaded, 2),
+        methods::Vector{Symbol} = [:max, :minmax, :zscore, :none]
+    )
+    set_publication_theme()
+
+    method_titles = Dict(
+        :max => "Abs-Max Scaling ([-1, 1])",
+        :minmax => "Min-Max Scaling ([0, 1])",
+        :zscore => "Z-score Standardization (μ=0, σ=1)",
+        :standard => "Z-score Standardization (μ=0, σ=1)",
+        :none => "Brak regularyzacji (Dane surowe)",
+        :raw => "Brak regularyzacji (Dane surowe)"
+    )
+
+    n_methods = length(methods)
+    n_cols = n_methods <= 2 ? n_methods : 2
+    n_rows = ceil(Int, n_methods / n_cols)
+
+    fig = Figure(size = (500 * n_cols, 400 * n_rows))
+    palette = [:crimson, :dodgerblue, :forestgreen, :darkorange, :purple, :goldenrod]
+
+    for (m_idx, m) in enumerate(methods)
+        row = div(m_idx - 1, n_cols) + 1
+        col = mod1(m_idx, n_cols)
+
+        ax = Axis(
+            fig[row, col],
+            title = get(method_titles, m, string(m)),
+            xlabel = L"\tau\,[\mathrm{fm}/c]",
+            ylabel = L"\text{Średni wymiar lokalny}",
+            xautolimitmargin = (0.0, 0.05),
+            yautolimitmargin = (0.05, 0.05)
+        )
+
+        for (i, k_bazowe) in enumerate(tablica_k)
+            k_drugie = k_bazowe * 2
+            tau_vals, mean_k1, _ = compute_lpca(dataset_loaded, k_bazowe, n_slices; feature_cols = feature_cols, normalize = m)
+            _, mean_k2, _ = compute_lpca(dataset_loaded, k_drugie, n_slices; feature_cols = feature_cols, normalize = m)
+
+            c = palette[mod1(i, length(palette))]
+            band!(ax, tau_vals, mean_k1, mean_k2; color = (c, 0.25))
+            lines!(ax, tau_vals, mean_k1; linewidth = 2.0, color = c, label = L"K = %$(k_bazowe), %$(k_drugie)")
+        end
+
+        if row == 1 && col == n_cols
+            axislegend(ax, position = :rt)
+        end
+    end
 
     return fig
 end

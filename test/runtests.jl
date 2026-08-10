@@ -323,9 +323,18 @@ using GLMakie
         @test AttractorsQGP.flatten_k_values(5:1:10) == 5:1:10
         @test AttractorsQGP.flatten_k_values([5, 6, 7]) == [5, 6, 7]
 
-        # 5. Test plot_local_pca
-        fig_lpca = plot_local_pca(mock_dataset; tablica_k = [2, 3], n_slices = 2)
+        # 5. Test plot_local_pca and data regularization methods
+        X_test = [1.0 200.0; 2.0 400.0; 3.0 600.0]
+        @test size(apply_normalization(X_test, :max)) == (3, 2)
+        @test size(apply_normalization(X_test, :minmax)) == (3, 2)
+        @test size(apply_normalization(X_test, :zscore)) == (3, 2)
+        @test size(apply_normalization(X_test, :none)) == (3, 2)
+
+        fig_lpca = plot_local_pca(mock_dataset; tablica_k = [2, 3], n_slices = 2, normalize = :minmax)
         @test fig_lpca isa GLMakie.Figure
+
+        fig_lpca_regs = plot_local_pca_regularizations(mock_dataset; tablica_k = [2, 3], n_slices = 2, methods = [:max, :minmax, :zscore, :none])
+        @test fig_lpca_regs isa GLMakie.Figure
     end
 
     @testset "HJSW Model ewolucja i PCA" begin

@@ -82,7 +82,7 @@ export estimate_scale_dimension, run_LLE
 export compute_polynomial_lle
 
 export lle, run_lle_per_time, run_lle_for_selected_taus, lle_spectrum, lle_spectrum_over_k, spectrum_statistics, scan_lle_spectrum
-export dims, normalize_max, swiss_roll, compute_lpca, dynamic_lpca_analysis, compute_lpca_entropy, compute_stable_lpca_collapse, compute_lpca_principal_angles
+export dims, normalize_max, apply_normalization, swiss_roll, compute_lpca, dynamic_lpca_analysis, compute_lpca_entropy, compute_stable_lpca_collapse, compute_lpca_principal_angles
 
 export PINNConfig, build_pinn_network, normalize_pinn_input, denormalize_pinn_output, pinn_predict
 export train_pinn, PINNResult
@@ -98,7 +98,7 @@ export citation
 export set_publication_theme, PLOT_KEYS, resolve_def, get_data, get_limits
 export plot_phase_space_grid, plot_phase_space_grid_3d, plot_thermodynamics_evolution, plot_phase_space_evolution, plot_phase_space_evolution_3d, plot_attractor, plot_attractor_Aw_T
 export plot_pca_summary, plot_pca_evr_over_time, plot_pca_bar_variance
-export plot_twonn, plot_lid_dimension, plot_map_lpca, plot_local_pca
+export plot_twonn, plot_lid_dimension, plot_map_lpca, plot_local_pca, plot_local_pca_regularizations
 export plot_lle_dim, plot_simulation_lle, plot_lle_spectrum_statistics, plot_lle_spectrum_statistics_grid, plot_lle_σ_spectrum, plot_lle_embedding, plot_lle_grid, plot_lle_grid_2d, plot_lle_grid_3d, plot_lle_results_for_taus, plot_lle_spectrum_analysis, plot_lle_spectrum_scan_analysis
 export plot_pinn_deff_evolution, animate_pca_evolution
 
