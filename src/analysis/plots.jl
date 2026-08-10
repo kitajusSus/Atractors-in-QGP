@@ -1690,3 +1690,183 @@ function plot_map_lpca(
 
     return fig
 end
+
+
+function _extract_column_or_key(data_slice::AbstractMatrix{<:Real}, def::Union{Symbol, Integer, Tuple})
+    if def isa Integer
+        lbl = L"\text{Kolumna } %$(def)"
+        return lbl, data_slice[:, def]
+    elseif def === :tau || def === :t
+        lbl = L"\tau\,[\mathrm{fm}/c]"
+        return lbl, data_slice[:, 1]
+    elseif def isa Symbol && haskey(PLOT_KEYS, def)
+        lbl, fn = PLOT_KEYS[def]
+        vals = [fn(data_slice[i, :], data_slice) for i in 1:size(data_slice, 1)]
+        return lbl, vals
+    elseif def isa Tuple && length(def) == 2
+        lbl = def[1]
+        vals = [def[2](data_slice[i, :], data_slice) for i in 1:size(data_slice, 1)]
+        return lbl, vals
+    else
+        error("Nieobsługiwany typ definicji osi: $def. Użyj Symbolu (np. :T, :A, :B, :tau), liczby całkowitej lub Tupli.")
+    end
+end
+
+"""
+    plot_phase_space_lpca_dims(
+        dataset::AbstractMatrix{<:Real};
+        liczba_sąsiadów::Int = 20,
+        wybrane_czasy::Union{Nothing, Real, AbstractVector{<:Real}} = nothing,
+        tolerancja_czasowa::Real = 1.0e-3,
+        tolerancja_wartości_własnych::Real = 0.01,
+        metoda_regularyzacji::Union{Symbol, Function} = :max,
+        wymiary_cech::AbstractVector{<:Integer} = collect(2:size(dataset, 2)),
+        zmienna_x::Union{Symbol, Integer, Tuple} = :T,
+        zmienna_y::Union{Symbol, Integer, Tuple} = :A,
+        zmienna_z::Union{Nothing, Symbol, Integer, Tuple} = nothing,
+        rozmiar_punktu::Real = 7.0,
+        przezroczystość::Real = 0.85,
+        tytuł_wykresu::Union{Nothing, String} = nothing
+    )
+
+Tworzy wykres przestrzeni fazowej (2D lub 3D), w którym punkty są kolorowane według ich
+lokalnego wymiaru introwertycznego \$d_{\\text{lokalny}}\$ wykrytego przez algorytm Local PCA (LPCA).
+
+# Parametry:
+- `dataset`: Macierz danych [tau, T, A, B, ...]
+- `liczba_sąsiadów`: Liczba najbliższych sąsiadów \$K\$ dla algorytmu k-NN w LPCA (domyślnie 20)
+- `wybrane_czasy`: Moment(y) czasu \$\\tau\$ do analizy. Jeśli `nothing`, analizowane są wszystkie chwile czasu w danych.
+- `tolerancja_czasowa`: Tolerancja dopasowania czasu \$\\tau\$ (domyślnie 1e-3)
+- `tolerancja_wartości_własnych`: Próg ucinki wartości własnych \$\\lambda_i / \\sum \\lambda\$ w LPCA (domyślnie 0.01)
+- `metoda_regularyzacji`: Metoda normalizacji danych per-przekrój czasu (`:max`, `:minmax`, `:zscore`, `:none`)
+- `wymiary_cech`: Indeksy kolumn cech używanych do wyznaczenia wymiaru LPCA (domyślnie 2:end)
+- `zmienna_x`: Zmienna na osi X (`:T`, `:A`, `:B`, `:tau`, `:w` itp.)
+- `zmienna_y`: Zmienna na osi Y (`:A`, `:T`, `:B` itp.)
+- `zmienna_z`: Zmienna na osi Z (jeśli podana, generowany jest wykres 3D `Axis3`)
+- `rozmiar_punktu`: Rozmiar punktów na wykresie
+- `przezroczystość`: Współczynnik przezroczystości punktów
+- `tytuł_wykresu`: Opcjonalny tytuł wykresu
+"""
+@views function plot_phase_space_lpca_dims(
+        dataset::AbstractMatrix{<:Real};
+        liczba_sąsiadów::Int = 20,
+        wybrane_czasy::Union{Nothing, Real, AbstractVector{<:Real}} = nothing,
+        tolerancja_czasowa::Real = 1.0e-3,
+        tolerancja_wartości_własnych::Real = 0.01,
+        metoda_regularyzacji::Union{Symbol, Function} = :max,
+        wymiary_cech::AbstractVector{<:Integer} = collect(2:size(dataset, 2)),
+        zmienna_x::Union{Symbol, Integer, Tuple} = :T,
+        zmienna_y::Union{Symbol, Integer, Tuple} = :A,
+        zmienna_z::Union{Nothing, Symbol, Integer, Tuple} = nothing,
+        rozmiar_punktu::Real = 7.0,
+        przezroczystość::Real = 0.85,
+        tytuł_wykresu::Union{Nothing, String} = nothing
+    )
+    set_publication_theme()
+
+    taus_in_data = sort(unique(dataset[:, 1]))
+    target_taus = if wybrane_czasy === nothing
+        taus_in_data
+    elseif wybrane_czasy isa Real
+        [Float64(wybrane_czasy)]
+    else
+        Float64.(wybrane_czasy)
+    end
+
+    all_indices = Int[]
+    all_dims = Float64[]
+
+    for τ in target_taus
+        rows = findall(isapprox.(dataset[:, 1], τ; atol = tolerancja_czasowa))
+        if isempty(rows)
+            nearest_idx = argmin(abs.(dataset[:, 1] .- τ))
+            rows = findall(isapprox.(dataset[:, 1], dataset[nearest_idx, 1]; atol = tolerancja_czasowa))
+        end
+
+        X_tau = dataset[rows, wymiary_cech]
+        n_points = size(X_tau, 1)
+        if n_points < 2
+            continue
+        end
+
+        X_norm = apply_normalization(X_tau, metoda_regularyzacji)
+        d_local = dims(X_norm; k = min(liczba_sąsiadów, n_points), tol = tolerancja_wartości_własnych)
+
+        append!(all_indices, rows)
+        append!(all_dims, d_local)
+    end
+
+    if isempty(all_indices)
+        error("Nie znaleziono żadnych punktów danych dla podanych kryteriów czasu.")
+    end
+
+    sub_dataset = dataset[all_indices, :]
+    lbl_x, vals_x = _extract_column_or_key(sub_dataset, zmienna_x)
+    lbl_y, vals_y = _extract_column_or_key(sub_dataset, zmienna_y)
+
+    fig = Figure(size = (950, 650))
+    palette = [:crimson, :dodgerblue, :forestgreen, :darkorange, :purple, :goldenrod, :darkcyan, :mediumvioletred]
+
+    unique_dims = sort(unique(all_dims))
+
+    if zmienna_z !== nothing
+        lbl_z, vals_z = _extract_column_or_key(sub_dataset, zmienna_z)
+        default_title = tytuł_wykresu !== nothing ? tytuł_wykresu : L"\text{Lokalny wymiar } d_{\mathrm{lokalny}} \text{ w przestrzeni fazowej 3D}"
+        ax3 = Axis3(
+            fig[1, 1],
+            title = default_title,
+            xlabel = lbl_x,
+            ylabel = lbl_y,
+            zlabel = lbl_z,
+            azimuth = 1.3 * π,
+            elevation = 0.15 * π
+        )
+
+        for (i, d_val) in enumerate(unique_dims)
+            mask = all_dims .== d_val
+            c = palette[mod1(i, length(palette))]
+            scatter!(
+                ax3,
+                vals_x[mask],
+                vals_y[mask],
+                vals_z[mask];
+                color = (c, przezroczystość),
+                markersize = rozmiar_punktu,
+                strokewidth = 0.2,
+                strokecolor = :white,
+                label = L"d_{\mathrm{lokalny}} = %$(Int(round(d_val)))"
+            )
+        end
+        axislegend(ax3, position = :rt)
+    else
+        default_title = tytuł_wykresu !== nothing ? tytuł_wykresu : L"\text{Lokalny wymiar } d_{\mathrm{lokalny}} \text{ w przestrzeni fazowej}"
+        ax2 = Axis(
+            fig[1, 1],
+            title = default_title,
+            xlabel = lbl_x,
+            ylabel = lbl_y,
+            xautolimitmargin = (0.05, 0.05),
+            yautolimitmargin = (0.05, 0.05)
+        )
+
+        for (i, d_val) in enumerate(unique_dims)
+            mask = all_dims .== d_val
+            c = palette[mod1(i, length(palette))]
+            scatter!(
+                ax2,
+                vals_x[mask],
+                vals_y[mask];
+                color = (c, przezroczystość),
+                markersize = rozmiar_punktu,
+                strokewidth = 0.2,
+                strokecolor = :white,
+                label = L"d_{\mathrm{lokalny}} = %$(Int(round(d_val)))"
+            )
+        end
+        axislegend(ax2, position = :rt)
+    end
+
+    return fig
+end
+
+const plot_phase_space_local_pca_dimensions = plot_phase_space_lpca_dims

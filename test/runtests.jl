@@ -335,6 +335,12 @@ using GLMakie
 
         fig_lpca_regs = plot_local_pca_regularizations(mock_dataset; tablica_k = [2, 3], n_slices = 2, methods = [:max, :minmax, :zscore, :none])
         @test fig_lpca_regs isa GLMakie.Figure
+
+        fig_ps_lpca_2d = plot_phase_space_lpca_dims(mock_dataset; liczba_sąsiadów = 3, wybrane_czasy = 0.22, zmienna_x = :T, zmienna_y = :A)
+        @test fig_ps_lpca_2d isa GLMakie.Figure
+
+        fig_ps_lpca_3d = plot_phase_space_lpca_dims(mock_dataset; liczba_sąsiadów = 3, wybrane_czasy = [0.22, 0.26], zmienna_x = :T, zmienna_y = :A, zmienna_z = :tau)
+        @test fig_ps_lpca_3d isa GLMakie.Figure
     end
 
     @testset "HJSW Model ewolucja i PCA" begin

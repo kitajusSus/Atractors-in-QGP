@@ -74,8 +74,34 @@ function run_hjsw_lpca_regularization_example()
         save(joinpath(output_dir, "hjsw_lpca_method_$(m).png"), fig_m)
     end
 
-    println("All regularization LPCA plots saved to: ", output_dir)
-    return fig_comparison
+    # 6. Generate Phase Space plot with LPCA dimensions colored per point
+    println("Generating 2D Phase Space plot with LPCA dimensions colored per point...")
+    fig_ps_2d = plot_phase_space_lpca_dims(
+        dataset;
+        liczba_sąsiadów = 15,
+        wybrane_czasy = 0.25,
+        metoda_regularyzacji = :max,
+        zmienna_x = :T,
+        zmienna_y = :A,
+        tytuł_wykresu = "Wymiar LPCA w przestrzeni fazowej (T, A) dla τ = 0.25 fm/c"
+    )
+    save(joinpath(output_dir, "hjsw_phase_space_lpca_dims_2d.png"), fig_ps_2d)
+
+    println("Generating 3D Phase Space plot with LPCA dimensions colored per point...")
+    fig_ps_3d = plot_phase_space_lpca_dims(
+        dataset;
+        liczba_sąsiadów = 15,
+        wybrane_czasy = [0.25, 0.5, 1.0],
+        metoda_regularyzacji = :max,
+        zmienna_x = :T,
+        zmienna_y = :A,
+        zmienna_z = :B,
+        tytuł_wykresu = "Wymiar LPCA w przestrzeni fazowej 3D (T, A, B)"
+    )
+    save(joinpath(output_dir, "hjsw_phase_space_lpca_dims_3d.png"), fig_ps_3d)
+
+    println("All regularization & phase space LPCA plots saved to: ", output_dir)
+    return (fig_comparison = fig_comparison, fig_ps_2d = fig_ps_2d, fig_ps_3d = fig_ps_3d)
 end
 
 if abspath(PROGRAM_FILE) == @__FILE__
