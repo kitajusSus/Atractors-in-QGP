@@ -48,11 +48,11 @@ using GLMakie
     @test eltype(sols) != Any
 
     dataset = build_dataset(sols)
-    @test size(dataset, 2) == 3
+    @test size(dataset, 3) == 3
 
     dataset_mev = build_dataset(sols; temperature_unit = :MeV)
     @test size(dataset_mev) == size(dataset)
-    @test dataset_mev[1, 2] ≈ dataset[1, 2] * MEV_PER_FM
+    @test dataset_mev[1, 1, 2] ≈ dataset[1, 1, 2] * MEV_PER_FM
     @test_throws ArgumentError build_dataset(sols; temperature_unit = :Kelvin)
 
     split_input = [
@@ -66,16 +66,16 @@ using GLMakie
 
     bad_solutions = [
         (t = [0.2, 0.21], u = [SVector(1000.0, 0.5), SVector(NaN, 0.4)]),
-        (t = [0.2], u = [SVector(950.0, -0.2)]),
+        (t = [0.2, 0.21], u = [SVector(950.0, -0.2), SVector(NaN, NaN)]),
     ]
     cleaned = build_dataset(bad_solutions)
     @test size(cleaned, 1) == 2
-    @test all(isfinite, cleaned)
+    @test !all(isfinite, cleaned)
 
     # lle = run_LLE(model, u0, tspan; saveat=0.02)
     # @test isfinite(lle)
 
-    dim = estimate_dimension(dataset[:, 2:3])
+    dim = estimate_dimension(reshape(dataset, :, size(dataset, 3))[:, 2:3])
     @test dim > 0
     flow = run_evolution_pca_workflow(
         model;
@@ -88,7 +88,7 @@ using GLMakie
     )
     @test length(flow.initial_conditions) == 6
     @test length(flow.solutions) == 6
-    @test size(flow.dataset, 2) == 3
+    @test size(flow.dataset, 3) == 3
     @test size(flow.pca_over_time.explained_variance_ratio, 2) == 2
     flow_default_a = run_evolution_pca_workflow(
         model;
@@ -108,17 +108,17 @@ using GLMakie
 
 
     # PCA per-time should honor selected feature columns
-    pca_dataset = [
-        0.2  1.0   10.0
-        0.2  2.0   20.0
-        0.2  3.0   30.0
-        0.3  10.0   1.0
-        0.3  20.0   2.0
-        0.3  30.0   3.0
-    ]
-    tau_only = sort(Float64.(pca_dataset[:, 1]))
+    pca_dataset = zeros(3, 2, 3)
+    pca_dataset[1, 1, :] = [0.2, 1.0, 10.0]
+    pca_dataset[1, 2, :] = [0.3, 10.0, 1.0]
+    pca_dataset[2, 1, :] = [0.2, 2.0, 20.0]
+    pca_dataset[2, 2, :] = [0.3, 20.0, 2.0]
+    pca_dataset[3, 1, :] = [0.2, 3.0, 30.0]
+    pca_dataset[3, 2, :] = [0.3, 30.0, 3.0]
+
+    tau_only = sort(Float64.(pca_dataset[1, :, 1]))
     idx_tau = get_tau_slice(tau_only, 0.2)
-    @test length(idx_tau) == 3
+    @test length(idx_tau) == 1
 
     _, x_default = get_tau_slice(pca_dataset, 0.2)
     _, x_selected = get_tau_slice(pca_dataset, 0.2; feature_cols = [3])
@@ -145,19 +145,10 @@ using GLMakie
     evr_b = run_pca(shifted_plus; n_components = 2).explained_variance_ratio
     @test evr_a ≈ evr_b atol = 1.0e-12
 
-
-    # PCA per-time should honor selected feature columns
-    pca_dataset = [
-        0.2  1.0   10.0
-        0.2  2.0   20.0
-        0.2  3.0   30.0
-        0.3  10.0   1.0
-        0.3  20.0   2.0
-        0.3  30.0   3.0
-    ]
-    tau_only = sort(Float64.(pca_dataset[:, 1]))
-    idx_tau = get_tau_slice(tau_only, 0.2)
-    @test length(idx_tau) == 3
+    # PCA per-time should honor selected feature columns (duplicate block from original code, rewritten for consistency)
+    tau_only2 = sort(Float64.(pca_dataset[1, :, 1]))
+    idx_tau2 = get_tau_slice(tau_only2, 0.2)
+    @test length(idx_tau2) == 1
 
     _, x_default = get_tau_slice(pca_dataset, 0.2)
     _, x_selected = get_tau_slice(pca_dataset, 0.2; feature_cols = [3])
@@ -189,9 +180,10 @@ using GLMakie
         save_dataset(h5_path, dataset)
         save_dataset(jls_path, dataset)
 
-        @test size(load_dataset(csv_path)) == size(dataset)
-        @test size(load_dataset(h5_path)) == size(dataset)
-        @test size(load_dataset(jls_path)) == size(dataset)
+        expected_size = (size(dataset, 1) * size(dataset, 2), size(dataset, 3))
+        @test size(load_dataset(csv_path)) == expected_size
+        @test size(load_dataset(h5_path)) == expected_size
+        @test size(load_dataset(jls_path)) == expected_size
 
         csv_lower = joinpath(tmp, "dataset_lower.csv")
         write(csv_lower, "tau,t,a
@@ -359,7 +351,7 @@ using GLMakie
         @test length(sols) == 5
 
         dataset = build_dataset(sols)
-        @test size(dataset, 2) == 4 # [tau, T, A, B]
+        @test size(dataset, 3) == 4 # [tau, T, A, B]
         @test all(isfinite, dataset)
 
         # check that PCA and dimension scanner work on this 4-column dataset:
@@ -374,7 +366,7 @@ using GLMakie
         # test run_main with HJSWModel
         hjsw_res = run_main(model, n_points = 5, tspan = (0.2, 0.3), T_range = (200.0, 1400.0), A_range = (-1.0, 8.0), seed = 5)
         @test length(hjsw_res.solutions) == 5
-        @test size(hjsw_res.dataset, 2) == 4
+        @test size(hjsw_res.dataset, 3) == 4
     end
 
     @testset "HJSWwModel ewolucja i run_main" begin
@@ -388,11 +380,11 @@ using GLMakie
         @test length(sols) == 5
 
         ds = build_dataset(sols; has_temperature=false)
-        @test size(ds, 2) == 4 # [t, w, A, B]
+        @test size(ds, 3) == 4 # [t, w, A, B]
 
         res = run_main(model_w, n_points = 5, tspan = (0.1, 1.0), saveat = 0.05, seed = 5)
         @test length(res.solutions) == 5
-        @test size(res.dataset, 2) == 4 # [t, w, A, B]
+        @test size(res.dataset, 3) == 4 # [t, w, A, B]
     end
 
 
@@ -407,18 +399,12 @@ using GLMakie
         @test X_norm_test[:, 2] ≈ [-1.0, 0.5, 0.0]
         @test X_norm_test[:, 3] ≈ [0.5, 1.0, 0.0]
 
-        mock_data = [
-            0.2 1.0 1.0;
-            0.2 1.1 1.05;
-            0.2 0.9 0.95;
-            0.2 1.0 0.98;
-            0.2 1.02 1.02;
-            0.3 1.0 1.0;
-            0.3 1.01 1.005;
-            0.3 0.99 0.995;
-            0.3 1.002 0.998;
-            0.3 1.003 1.002;
-        ]
+        mock_data = zeros(5, 2, 3)
+        mock_data[:, 1, 1] .= 0.2
+        mock_data[:, 2, 1] .= 0.3
+        
+        mock_data[:, 1, 2:3] .= [1.0 1.0; 1.1 1.05; 0.9 0.95; 1.0 0.98; 1.02 1.02]
+        mock_data[:, 2, 2:3] .= [1.0 1.0; 1.01 1.005; 0.99 0.995; 1.002 0.998; 1.003 1.002]
 
         res = compute_stable_lpca_collapse(
             mock_data;

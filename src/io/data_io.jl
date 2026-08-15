@@ -6,7 +6,7 @@ using Serialization
 """
 Save dataset matrix to CSV.
 """
-function save_dataset_csv(path::AbstractString, data::AbstractMatrix{<:Real})
+function save_dataset_csv(path::AbstractString, data::AbstractArray{<:Real})
     @assert size(data, 2) >= 2 "Dataset must have at least columns [tau, feature1]."
     n_cols = size(data, 2)
     col_names = Symbol[]
@@ -63,7 +63,7 @@ end
 """
 Save dataset matrix to HDF5.
 """
-function save_dataset_h5(path::AbstractString, data::AbstractMatrix{<:Real})
+function save_dataset_h5(path::AbstractString, data::AbstractArray{<:Real})
     @assert size(data, 2) >= 2 "Dataset must have at least columns [tau, feature1]."
     h5open(path, "w") do f
         f["dataset"] = Matrix{Float64}(data)
@@ -86,7 +86,7 @@ end
 """
 Save dataset using native Julia serialization (.jls).
 """
-function save_dataset_jls(path::AbstractString, data::AbstractMatrix{<:Real})
+function save_dataset_jls(path::AbstractString, data::AbstractArray{<:Real})
     @assert size(data, 2) >= 2 "Dataset must have at least columns [tau, feature1]."
     open(path, "w") do io
         serialize(io, Matrix{Float64}(data))
@@ -109,14 +109,15 @@ end
 """
 Save dataset by extension: .csv, .h5/.hdf5, .jls
 """
-function save_dataset(path::AbstractString, data::AbstractMatrix{<:Real})
+function save_dataset(path::AbstractString, data::AbstractArray{<:Real})
+    flat_data = data isa AbstractArray{<:Real, 3} ? reshape(data, :, size(data, 3)) : data
     lower = lowercase(path)
     if endswith(lower, ".csv")
-        return save_dataset_csv(path, data)
+        return save_dataset_csv(path, flat_data)
     elseif endswith(lower, ".h5") || endswith(lower, ".hdf5") || endswith(lower, ".hd5")
-        return save_dataset_h5(path, data)
+        return save_dataset_h5(path, flat_data)
     elseif endswith(lower, ".jls")
-        return save_dataset_jls(path, data)
+        return save_dataset_jls(path, flat_data)
     else
         error("Unsupported format. Use .csv, .h5/.hdf5/.hd5, or .jls")
     end

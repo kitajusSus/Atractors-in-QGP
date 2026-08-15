@@ -396,3 +396,27 @@ function run_evolution_pca_workflow(
         pca_over_time = pca_over_time,
     )
 end
+
+
+function to_2d_local_pca(dataset::AbstractArray{<:Real, 3})
+    dataset_2d = reshape(permutedims(dataset, (2, 1, 3)), :, size(dataset, 3))
+    valid_rows = .!isnan.(dataset_2d[:, 1])
+    return dataset_2d[valid_rows, :]
+end
+
+
+function run_pca(dataset::AbstractArray{<:Real, 3}, args...; kwargs...)
+    return run_pca(to_2d_local_pca(dataset), args...; kwargs...)
+end
+function run_pca_kernel(dataset::AbstractArray{<:Real, 3}, args...; kwargs...)
+    return run_pca_kernel(to_2d_local_pca(dataset), args...; kwargs...)
+end
+function get_tau_slice(dataset::AbstractArray{<:Real, 3}, args...; kwargs...)
+    return get_tau_slice(to_2d_local_pca(dataset), args...; kwargs...)
+end
+function run_pca_per_time(dataset::AbstractArray{<:Real, 3}, args...; kwargs...)
+    return run_pca_per_time(to_2d_local_pca(dataset), args...; kwargs...)
+end
+function run_pca_for_tau(dataset::AbstractArray{<:Real, 3}, args...; kwargs...)
+    return run_pca_for_tau(to_2d_local_pca(dataset), args...; kwargs...)
+end

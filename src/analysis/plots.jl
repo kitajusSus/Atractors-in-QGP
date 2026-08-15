@@ -1870,3 +1870,96 @@ lokalnego wymiaru introwertycznego \$d_{\\text{lokalny}}\$ wykrytego przez algor
 end
 
 const plot_phase_space_local_pca_dimensions = plot_phase_space_lpca_dims
+
+
+function to_2d_local_plots(dataset::AbstractArray{<:Real, 3})
+    dataset_2d = reshape(permutedims(dataset, (2, 1, 3)), :, size(dataset, 3))
+    valid_rows = .!isnan.(dataset_2d[:, 1])
+    return dataset_2d[valid_rows, :]
+end
+
+
+function get_data(dataset::AbstractArray{<:Real, 3}, args...; kwargs...)
+    return get_data(to_2d_local_plots(dataset), args...; kwargs...)
+end
+function get_limits(dataset::AbstractArray{<:Real, 3}, args...; kwargs...)
+    return get_limits(to_2d_local_plots(dataset), args...; kwargs...)
+end
+function _split_trajectories(dataset::AbstractArray{<:Real, 3}, args...; kwargs...)
+    return _split_trajectories(to_2d_local_plots(dataset), args...; kwargs...)
+end
+function plot_phase_space_grid(dataset::AbstractArray{<:Real, 3}, args...; kwargs...)
+    return plot_phase_space_grid(to_2d_local_plots(dataset), args...; kwargs...)
+end
+function plot_phase_space_grid_3d(dataset::AbstractArray{<:Real, 3}, args...; kwargs...)
+    return plot_phase_space_grid_3d(to_2d_local_plots(dataset), args...; kwargs...)
+end
+function plot_attractor(dataset::AbstractArray{<:Real, 3}, args...; kwargs...)
+    return plot_attractor(to_2d_local_plots(dataset), args...; kwargs...)
+end
+function plot_thermodynamics_evolution(dataset::AbstractArray{<:Real, 3}, args...; kwargs...)
+    return plot_thermodynamics_evolution(to_2d_local_plots(dataset), args...; kwargs...)
+end
+function plot_phase_space_evolution(dataset::AbstractArray{<:Real, 3}, args...; kwargs...)
+    return plot_phase_space_evolution(to_2d_local_plots(dataset), args...; kwargs...)
+end
+function plot_attractor_Aw_T(dataset::AbstractArray{<:Real, 3}, args...; kwargs...)
+    return plot_attractor_Aw_T(to_2d_local_plots(dataset), args...; kwargs...)
+end
+function plot_phase_space_evolution_3d(dataset::AbstractArray{<:Real, 3}, args...; kwargs...)
+    return plot_phase_space_evolution_3d(to_2d_local_plots(dataset), args...; kwargs...)
+end
+function plot_pca_evr_over_time(dataset::AbstractArray{<:Real, 3}, args...; kwargs...)
+    return plot_pca_evr_over_time(to_2d_local_plots(dataset), args...; kwargs...)
+end
+function plot_pca_bar_variance(dataset::AbstractArray{<:Real, 3}, args...; kwargs...)
+    return plot_pca_bar_variance(to_2d_local_plots(dataset), args...; kwargs...)
+end
+function plot_pca_summary(dataset::AbstractArray{<:Real, 3}, args...; kwargs...)
+    return plot_pca_summary(to_2d_local_plots(dataset), args...; kwargs...)
+end
+function animate_pca_evolution(dataset::AbstractArray{<:Real, 3}, args...; kwargs...)
+    return animate_pca_evolution(to_2d_local_plots(dataset), args...; kwargs...)
+end
+function plot_lle_dim(dataset::AbstractArray{<:Real, 3}, args...; kwargs...)
+    return plot_lle_dim(to_2d_local_plots(dataset), args...; kwargs...)
+end
+function plot_lle_dim!(ax::Axis, dataset::AbstractArray{<:Real, 3}, args...; kwargs...)
+    return plot_lle_dim!(ax, to_2d_local_plots(dataset), args...; kwargs...)
+end
+function plot_simulation_lle(dataset::AbstractArray{<:Real, 3}, args...; kwargs...)
+    return plot_simulation_lle(to_2d_local_plots(dataset), args...; kwargs...)
+end
+function plot_lle_embedding(dataset::AbstractArray{<:Real, 3}, args...; kwargs...)
+    return plot_lle_embedding(to_2d_local_plots(dataset), args...; kwargs...)
+end
+function plot_pinn_deff_evolution(dataset::AbstractArray{<:Real, 3}, args...; kwargs...)
+    return plot_pinn_deff_evolution(to_2d_local_plots(dataset), args...; kwargs...)
+end
+function plot_lid_dimension(dataset::AbstractArray{<:Real, 3}, args...; kwargs...)
+    return plot_lid_dimension(to_2d_local_plots(dataset), args...; kwargs...)
+end
+function plot_twonn(dataset::AbstractArray{<:Real, 3}, args...; kwargs...)
+    return plot_twonn(to_2d_local_plots(dataset), args...; kwargs...)
+end
+function plot_lle_results_for_taus(dataset::AbstractArray{<:Real, 3}, args...; kwargs...)
+    return plot_lle_results_for_taus(to_2d_local_plots(dataset), args...; kwargs...)
+end
+function plot_lle_spectrum_analysis(dataset::AbstractArray{<:Real, 3}, args...; kwargs...)
+    return plot_lle_spectrum_analysis(to_2d_local_plots(dataset), args...; kwargs...)
+end
+function plot_lle_spectrum_scan_analysis(dataset::AbstractArray{<:Real, 3}, args...; kwargs...)
+    return plot_lle_spectrum_scan_analysis(to_2d_local_plots(dataset), args...; kwargs...)
+end
+function plot_local_pca(dataset::AbstractArray{<:Real, 3}, args...; kwargs...)
+    return plot_local_pca(to_2d_local_plots(dataset), args...; kwargs...)
+end
+function plot_local_pca_regularizations(dataset::AbstractArray{<:Real, 3}, args...; kwargs...)
+    return plot_local_pca_regularizations(to_2d_local_plots(dataset), args...; kwargs...)
+end
+function plot_map_lpca(dataset::AbstractArray{<:Real, 3}, args...; kwargs...)
+    return plot_map_lpca(to_2d_local_plots(dataset), args...; kwargs...)
+end
+function plot_phase_space_lpca_dims(dataset::AbstractArray{<:Real, 3}, args...; kwargs...)
+    return plot_phase_space_lpca_dims(to_2d_local_plots(dataset), args...; kwargs...)
+end

@@ -260,3 +260,18 @@ function scan_lle_spectrum(dataset; taus, k_values = 5:5:50)
 
     return results
 end
+
+
+function to_2d_local_lle(dataset::AbstractArray{<:Real, 3})
+    dataset_2d = reshape(permutedims(dataset, (2, 1, 3)), :, size(dataset, 3))
+    valid_rows = .!isnan.(dataset_2d[:, 1])
+    return dataset_2d[valid_rows, :]
+end
+
+
+function run_lle_per_time(dataset::AbstractArray{<:Real, 3}, args...; kwargs...)
+    return run_lle_per_time(to_2d_local_lle(dataset), args...; kwargs...)
+end
+function run_lle_for_selected_taus(dataset::AbstractArray{<:Real, 3}, args...; kwargs...)
+    return run_lle_for_selected_taus(to_2d_local_lle(dataset), args...; kwargs...)
+end

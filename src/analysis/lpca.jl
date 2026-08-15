@@ -517,3 +517,24 @@ end
         all_angles_per_tau,
     )
 end
+
+
+function to_2d_local_lpca(dataset::AbstractArray{<:Real, 3})
+    dataset_2d = reshape(permutedims(dataset, (2, 1, 3)), :, size(dataset, 3))
+    valid_rows = .!isnan.(dataset_2d[:, 1])
+    return dataset_2d[valid_rows, :]
+end
+
+
+function dynamic_lpca_analysis(dataset::AbstractArray{<:Real, 3}, args...; kwargs...)
+    return dynamic_lpca_analysis(to_2d_local_lpca(dataset), args...; kwargs...)
+end
+function compute_lpca_entropy(dataset::AbstractArray{<:Real, 3}, args...; kwargs...)
+    return compute_lpca_entropy(to_2d_local_lpca(dataset), args...; kwargs...)
+end
+function compute_stable_lpca_collapse(dataset::AbstractArray{<:Real, 3}, args...; kwargs...)
+    return compute_stable_lpca_collapse(to_2d_local_lpca(dataset), args...; kwargs...)
+end
+function compute_lpca_principal_angles(dataset::AbstractArray{<:Real, 3}, args...; kwargs...)
+    return compute_lpca_principal_angles(to_2d_local_lpca(dataset), args...; kwargs...)
+end

@@ -50,7 +50,7 @@ function build_dataset(
     state_dim = length(solutions[1].u[1])
     has_extra = has_temperature && (include_tau || include_w)
     
-    n_cols = if has_extra
+    n_features = if has_extra
         include_temperature ? (2 + state_dim) : (1 + state_dim)
     elseif has_temperature
         include_temperature ? (1 + state_dim) : state_dim
@@ -58,19 +58,19 @@ function build_dataset(
         1 + state_dim
     end
 
-    n_rows = sum(length(sol.t) for sol in solutions)
-    data = Matrix{Float64}(undef, n_rows, n_cols)
+    n_trajectories = length(solutions)
+    n_time_steps = length(solutions[1].t)
+    
+    data = Array{Float64, 3}(undef, n_trajectories, n_time_steps, n_features)
 
-    row_idx = 1
-    @inbounds for sol in solutions
-        for i in eachindex(sol.t)
-            t_var = sol.t[i]
-            all_finite = isfinite(t_var) && all(isfinite, sol.u[i])
-
-            if all_finite
+    @inbounds for (traj_idx, sol) in enumerate(solutions)
+        for time_idx in 1:n_time_steps
+            if time_idx <= length(sol.t) && time_idx <= length(sol.u)
+                t_var = sol.t[time_idx]
+                
                 if has_extra
                     # Determine tau and w
-                    T_fm = sol.u[i][1]
+                    T_fm = sol.u[time_idx][1]
                     if include_tau
                         tau = t_var / T_fm
                         w = t_var
@@ -81,22 +81,22 @@ function build_dataset(
                     T = temperature_unit === :MeV ? T_fm * MEV_PER_FM : T_fm
 
                     if include_temperature
-                        data[row_idx, 1] = tau
-                        data[row_idx, 2] = T
-                        data[row_idx, 3] = w
-                        for col in 4:n_cols
-                            data[row_idx, col] = sol.u[i][col - 2]
+                        data[traj_idx, time_idx, 1] = tau
+                        data[traj_idx, time_idx, 2] = T
+                        data[traj_idx, time_idx, 3] = w
+                        for col in 4:n_features
+                            data[traj_idx, time_idx, col] = sol.u[time_idx][col - 2]
                         end
                     else
-                        data[row_idx, 1] = tau
-                        data[row_idx, 2] = w
-                        for col in 3:n_cols
-                            data[row_idx, col] = sol.u[i][col - 1]
+                        data[traj_idx, time_idx, 1] = tau
+                        data[traj_idx, time_idx, 2] = w
+                        for col in 3:n_features
+                            data[traj_idx, time_idx, col] = sol.u[time_idx][col - 1]
                         end
                     end
                 elseif has_temperature
-                    data[row_idx, 1] = t_var
-                    T = sol.u[i][1]
+                    data[traj_idx, time_idx, 1] = t_var
+                    T = sol.u[time_idx][1]
                     if temperature_unit === :fm
                         # standard fm units
                     elseif temperature_unit === :MeV
@@ -106,27 +106,31 @@ function build_dataset(
                     end
                     
                     if include_temperature
-                        data[row_idx, 2] = T
-                        for col in 3:n_cols
-                            data[row_idx, col] = sol.u[i][col - 1]
+                        data[traj_idx, time_idx, 2] = T
+                        for col in 3:n_features
+                            data[traj_idx, time_idx, col] = sol.u[time_idx][col - 1]
                         end
                     else
-                        for col in 2:n_cols
-                            data[row_idx, col] = sol.u[i][col]
+                        for col in 2:n_features
+                            data[traj_idx, time_idx, col] = sol.u[time_idx][col]
                         end
                     end
                 else
-                    data[row_idx, 1] = t_var
-                    for col in 2:n_cols
-                        data[row_idx, col] = sol.u[i][col - 1]
+                    data[traj_idx, time_idx, 1] = t_var
+                    for col in 2:n_features
+                        data[traj_idx, time_idx, col] = sol.u[time_idx][col - 1]
                     end
                 end
-
-                row_idx += 1
+            else
+                # Pad with NaNs if trajectory is shorter
+                for col in 1:n_features
+                    data[traj_idx, time_idx, col] = NaN
+                end
             end
         end
     end
 
-    return data[1:(row_idx - 1), :]
+    return data
 end
+
 

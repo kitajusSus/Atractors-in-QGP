@@ -52,3 +52,18 @@ function scan_dimension_from_data(
 
     return (taus = valid_taus, dimensions = dimensions)
 end
+
+
+function to_2d_local_dimension(dataset::AbstractArray{<:Real, 3})
+    dataset_2d = reshape(permutedims(dataset, (2, 1, 3)), :, size(dataset, 3))
+    valid_rows = .!isnan.(dataset_2d[:, 1])
+    return dataset_2d[valid_rows, :]
+end
+
+
+function estimate_effective_dimension(dataset::AbstractArray{<:Real, 3}, args...; kwargs...)
+    return estimate_effective_dimension(to_2d_local_dimension(dataset), args...; kwargs...)
+end
+function scan_dimension_from_data(dataset::AbstractArray{<:Real, 3}, args...; kwargs...)
+    return scan_dimension_from_data(to_2d_local_dimension(dataset), args...; kwargs...)
+end
